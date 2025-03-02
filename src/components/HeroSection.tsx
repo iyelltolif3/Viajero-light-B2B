@@ -1,12 +1,11 @@
 
 import React, { useState } from 'react';
-import { Search, Plane } from 'lucide-react';
+import { Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import Carousel from './ui/carousel-custom';
 import DestinationSelector from './DestinationSelector';
 import DateSelector from './DateSelector';
-import TravelerSelector from './TravelerSelector';
 import TravelQuotes from './TravelQuotes';
 
 interface HeroSectionProps {
@@ -21,8 +20,7 @@ export function HeroSection({ className }: HeroSectionProps) {
     dates: {
       departureDate: undefined as Date | undefined,
       returnDate: undefined as Date | undefined,
-    },
-    travelers: [] as any[],
+    }
   });
 
   // Background carousel images
@@ -50,44 +48,40 @@ export function HeroSection({ className }: HeroSectionProps) {
           interval={7000}
         />
         {/* Gradient overlay */}
-        <div className="absolute inset-0 bg-gradient-to-b from-travel-950/30 via-travel-900/20 to-travel-950/40 z-10" />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/30 to-black/50 z-10 dark:from-black/60 dark:via-black/50 dark:to-black/70" />
       </div>
 
       {/* Hero Content */}
       <div className="relative z-10 flex-1 flex flex-col justify-center items-center px-4 py-16 md:py-24">
         <div className="text-center mb-8 md:mb-12 max-w-4xl mx-auto animate-fade-in">
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-4 tracking-tight">
-            Discover Your Perfect Journey
+            Discover Your Perfect Journey in Chile
           </h1>
           <p className="text-lg md:text-xl text-white/90 max-w-2xl mx-auto">
-            Explore the world with confidence. We handle the details so you can focus on creating memories.
+            Explore Chile with confidence. We handle the details so you can focus on creating memories.
           </p>
         </div>
 
         {/* Search Form */}
-        <div className="w-full max-w-5xl mx-auto glass-morphism rounded-xl overflow-hidden animate-scale-in">
+        <div className="w-full max-w-4xl mx-auto glass-morphism rounded-xl overflow-hidden animate-scale-in">
           <form onSubmit={handleSubmit} className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
               <DestinationSelector
                 label="From"
-                placeholder="Where are you flying from?"
+                placeholder="Where are you departing from?"
                 onSelect={(value) => setFormData({ ...formData, origin: value })}
                 value={formData.origin}
               />
               
               <DestinationSelector
                 label="To"
-                placeholder="Where are you flying to?"
+                placeholder="Where in Chile?"
                 onSelect={(value) => setFormData({ ...formData, destination: value })}
                 value={formData.destination}
               />
               
               <DateSelector
                 onDatesChange={(dates) => setFormData({ ...formData, dates })}
-              />
-              
-              <TravelerSelector
-                onTravelersChange={(travelers) => setFormData({ ...formData, travelers })}
               />
             </div>
             

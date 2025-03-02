@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import HeroSection from '@/components/HeroSection';
 import DiscountSection from '@/components/DiscountSection';
+import { ThemeToggle } from '@/components/theme-toggle';
 
 const Index = () => {
   // State for mobile menu
@@ -21,13 +22,13 @@ const Index = () => {
   ];
 
   return (
-    <div className="min-h-screen flex flex-col bg-travel-50">
+    <div className="min-h-screen flex flex-col bg-background">
       {/* Navigation */}
-      <header className="sticky top-0 z-50 backdrop-blur-lg bg-white/80 border-b border-travel-100">
+      <header className="sticky top-0 z-50 backdrop-blur-lg bg-background/80 border-b border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             {/* Logo */}
-            <div className="font-bold text-xl text-travel-900">
+            <div className="font-bold text-xl text-foreground">
               Wanderlust Assist
             </div>
 
@@ -37,17 +38,18 @@ const Index = () => {
                 <a
                   key={item.label}
                   href={item.href}
-                  className="text-travel-600 hover:text-travel-900 text-sm font-medium transition-colors"
+                  className="text-foreground/80 hover:text-primary text-sm font-medium transition-colors"
                 >
                   {item.label}
                 </a>
               ))}
             </nav>
 
-            {/* Login/Register Button (Desktop) */}
+            {/* Login/Register Button & Theme Toggle (Desktop) */}
             <div className="hidden md:flex items-center space-x-2">
+              <ThemeToggle />
               <Link to="/login">
-                <Button variant="outline" size="sm" className="border-travel-200 text-travel-700 hover:text-travel-900">
+                <Button variant="outline" size="sm" className="border-border text-foreground hover:text-primary">
                   <User className="h-4 w-4 mr-2" />
                   Sign In
                 </Button>
@@ -61,15 +63,18 @@ const Index = () => {
                   <Menu className="h-5 w-5" />
                 </Button>
               </SheetTrigger>
-              <SheetContent side="right" className="w-[300px] sm:w-[400px]">
+              <SheetContent side="right" className="w-[300px] sm:w-[400px] bg-background">
                 <div className="flex flex-col h-full pb-8">
                   <div className="flex justify-between items-center py-4">
-                    <div className="font-bold text-xl text-travel-900">
+                    <div className="font-bold text-xl text-foreground">
                       Wanderlust Assist
                     </div>
-                    <Button variant="ghost" size="sm" onClick={() => setIsMenuOpen(false)}>
-                      <X className="h-5 w-5" />
-                    </Button>
+                    <div className="flex items-center space-x-2">
+                      <ThemeToggle />
+                      <Button variant="ghost" size="sm" onClick={() => setIsMenuOpen(false)}>
+                        <X className="h-5 w-5" />
+                      </Button>
+                    </div>
                   </div>
                   
                   <nav className="flex flex-col space-y-4 pt-4">
@@ -77,7 +82,7 @@ const Index = () => {
                       <a
                         key={item.label}
                         href={item.href}
-                        className="text-travel-800 hover:text-travel-900 py-2 text-base font-medium transition-colors"
+                        className="text-foreground hover:text-primary py-2 text-base font-medium transition-colors"
                         onClick={() => setIsMenuOpen(false)}
                       >
                         {item.label}
@@ -104,15 +109,15 @@ const Index = () => {
       <HeroSection />
 
       {/* Discount Section */}
-      <DiscountSection id="offers" />
+      <DiscountSection />
 
       {/* Footer */}
-      <footer className="bg-travel-900 text-travel-100 py-12 px-4 md:px-8">
+      <footer className="bg-primary/95 text-primary-foreground py-12 px-4 md:px-8">
         <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-8">
           <div>
             <h3 className="text-lg font-semibold text-white mb-4">Wanderlust Assist</h3>
-            <p className="text-sm text-travel-300 mb-4">
-              Your trusted partner for memorable travel experiences around the world.
+            <p className="text-sm text-primary-foreground/80 mb-4">
+              Your trusted partner for memorable travel experiences across Chile.
             </p>
           </div>
           
@@ -121,7 +126,7 @@ const Index = () => {
             <ul className="space-y-2">
               {navItems.map((item) => (
                 <li key={item.label}>
-                  <a href={item.href} className="text-sm text-travel-300 hover:text-white transition-colors">
+                  <a href={item.href} className="text-sm text-primary-foreground/80 hover:text-white transition-colors">
                     {item.label}
                   </a>
                 </li>
@@ -177,8 +182,8 @@ const Index = () => {
           </div>
         </div>
         
-        <div className="max-w-7xl mx-auto mt-8 pt-8 border-t border-travel-800 text-center">
-          <p className="text-sm text-travel-400">
+        <div className="max-w-7xl mx-auto mt-8 pt-8 border-t border-primary-foreground/20 text-center">
+          <p className="text-sm text-primary-foreground/60">
             © {new Date().getFullYear()} Wanderlust Assist. All rights reserved.
           </p>
         </div>
