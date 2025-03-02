@@ -63,7 +63,7 @@ export function TravelQuotes({ className }: TravelQuotesProps) {
   return (
     <div 
       className={cn(
-        "w-full py-3 px-6 glass-morphism relative overflow-hidden",
+        "w-full py-3 px-6 bg-travel-600/90 dark:bg-travel-900/90 backdrop-blur-md relative overflow-hidden shadow-lg",
         className
       )}
       onMouseEnter={() => setIsPaused(true)}
@@ -76,8 +76,8 @@ export function TravelQuotes({ className }: TravelQuotesProps) {
         )}
       >
         <blockquote className="max-w-3xl mx-auto">
-          <p className="text-travel-800 text-sm md:text-base italic">"{currentQuote.text}"</p>
-          <footer className="text-travel-600 text-xs md:text-sm mt-2">— {currentQuote.author}</footer>
+          <p className="text-white text-sm md:text-base italic">"{currentQuote.text}"</p>
+          <footer className="text-white/80 text-xs md:text-sm mt-2">— {currentQuote.author}</footer>
         </blockquote>
       </div>
     </div>

@@ -69,9 +69,9 @@ export function DateSelector({ className, onDatesChange }: DateSelectorProps) {
                       isAfter(date, dates.departureDate) && 
                       isBefore(date, dates.returnDate);
     
-    if (isSelected) return 'calendar-day-selected';
-    if (isInRange) return 'calendar-day-range';
-    return '';
+    if (isSelected) return "bg-primary text-primary-foreground";
+    if (isInRange) return "bg-primary/10 text-foreground";
+    return "";
   };
 
   // Notify parent component when dates change
@@ -83,7 +83,7 @@ export function DateSelector({ className, onDatesChange }: DateSelectorProps) {
     <div className={cn("space-y-1.5", className)}>
       <div className="flex flex-col sm:flex-row sm:items-center gap-2">
         <div className="flex-1">
-          <label htmlFor="departure-date" className="text-sm font-medium text-travel-800 block mb-1.5">
+          <label htmlFor="departure-date" className="text-sm font-medium text-foreground block mb-1.5">
             Departure Date
           </label>
           <Popover open={open} onOpenChange={setOpen}>
@@ -92,8 +92,8 @@ export function DateSelector({ className, onDatesChange }: DateSelectorProps) {
                 id="departure-date"
                 variant="outline"
                 className={cn(
-                  "w-full justify-start text-left font-normal bg-white/80 backdrop-blur-sm",
-                  !dates.departureDate && "text-travel-400",
+                  "w-full justify-start text-left font-normal bg-background/80 backdrop-blur-sm",
+                  !dates.departureDate && "text-muted-foreground",
                   activeCalendar === 'departure' && open && "ring-2 ring-primary ring-opacity-50"
                 )}
               >
@@ -101,7 +101,7 @@ export function DateSelector({ className, onDatesChange }: DateSelectorProps) {
                 {dates.departureDate ? format(dates.departureDate, "MMMM d, yyyy") : "Select departure date"}
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-auto p-0 bg-white" align="start">
+            <PopoverContent className="w-auto p-0 bg-card" align="start">
               <div className="flex flex-col sm:flex-row">
                 <div className="p-3">
                   <div className="flex justify-between pb-4">
@@ -109,8 +109,8 @@ export function DateSelector({ className, onDatesChange }: DateSelectorProps) {
                       className={cn(
                         "text-sm font-medium px-2 py-1 rounded-md transition-colors", 
                         activeCalendar === 'departure' 
-                          ? "bg-primary text-white" 
-                          : "text-travel-600 hover:bg-travel-100"
+                          ? "bg-primary text-primary-foreground" 
+                          : "text-foreground hover:bg-muted"
                       )}
                       onClick={() => setActiveCalendar('departure')}
                     >
@@ -120,8 +120,8 @@ export function DateSelector({ className, onDatesChange }: DateSelectorProps) {
                       className={cn(
                         "text-sm font-medium px-2 py-1 rounded-md transition-colors", 
                         activeCalendar === 'return' 
-                          ? "bg-primary text-white" 
-                          : "text-travel-600 hover:bg-travel-100"
+                          ? "bg-primary text-primary-foreground" 
+                          : "text-foreground hover:bg-muted"
                       )}
                       onClick={() => setActiveCalendar('return')}
                     >
@@ -149,12 +149,13 @@ export function DateSelector({ className, onDatesChange }: DateSelectorProps) {
                     modifiersStyles={{
                       selected: { fontWeight: "bold" }
                     }}
+                    className="rounded-md border"
                     classNames={{
-                      day: (date) => getDayClassName(date),
+                      day: getDayClassName as unknown as string,
                     }}
                   />
                   {dates.departureDate && dates.returnDate && (
-                    <div className="pt-4 text-sm text-travel-600">
+                    <div className="pt-4 text-sm text-muted-foreground">
                       <p>
                         {`${format(dates.departureDate, "MMM d")} - ${format(dates.returnDate, "MMM d, yyyy")}`}
                       </p>
@@ -167,15 +168,15 @@ export function DateSelector({ className, onDatesChange }: DateSelectorProps) {
         </div>
 
         <div className="flex-1">
-          <label htmlFor="return-date" className="text-sm font-medium text-travel-800 block mb-1.5">
+          <label htmlFor="return-date" className="text-sm font-medium text-foreground block mb-1.5">
             Return Date
           </label>
           <Button
             id="return-date"
             variant="outline"
             className={cn(
-              "w-full justify-start text-left font-normal bg-white/80 backdrop-blur-sm",
-              !dates.returnDate && "text-travel-400",
+              "w-full justify-start text-left font-normal bg-background/80 backdrop-blur-sm",
+              !dates.returnDate && "text-muted-foreground",
               activeCalendar === 'return' && open && "ring-2 ring-primary ring-opacity-50"
             )}
             onClick={() => {

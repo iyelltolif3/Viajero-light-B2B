@@ -12,21 +12,23 @@ interface Destination {
   type: 'city' | 'country' | 'landmark';
 }
 
-// Sample destination data
+// Sample Chile-centric destination data
 const popularDestinations: Destination[] = [
-  { id: 'paris', name: 'Paris', country: 'France', type: 'city' },
-  { id: 'london', name: 'London', country: 'United Kingdom', type: 'city' },
-  { id: 'rome', name: 'Rome', country: 'Italy', type: 'city' },
-  { id: 'barcelona', name: 'Barcelona', country: 'Spain', type: 'city' },
-  { id: 'newyork', name: 'New York', country: 'United States', type: 'city' },
-  { id: 'tokyo', name: 'Tokyo', country: 'Japan', type: 'city' },
-  { id: 'sydney', name: 'Sydney', country: 'Australia', type: 'city' },
-  { id: 'dubai', name: 'Dubai', country: 'United Arab Emirates', type: 'city' },
-  { id: 'singapore', name: 'Singapore', country: 'Singapore', type: 'city' },
-  { id: 'hongkong', name: 'Hong Kong', country: 'China', type: 'city' },
-  { id: 'morocco', name: 'Morocco', country: 'Morocco', type: 'country' },
-  { id: 'thailand', name: 'Thailand', country: 'Thailand', type: 'country' },
-  { id: 'bali', name: 'Bali', country: 'Indonesia', type: 'landmark' },
+  { id: 'santiago', name: 'Santiago', country: 'Chile', type: 'city' },
+  { id: 'valparaiso', name: 'Valparaíso', country: 'Chile', type: 'city' },
+  { id: 'pucon', name: 'Pucón', country: 'Chile', type: 'city' },
+  { id: 'vina-del-mar', name: 'Viña del Mar', country: 'Chile', type: 'city' },
+  { id: 'san-pedro-atacama', name: 'San Pedro de Atacama', country: 'Chile', type: 'city' },
+  { id: 'puerto-varas', name: 'Puerto Varas', country: 'Chile', type: 'city' },
+  { id: 'chiloe', name: 'Chiloé', country: 'Chile', type: 'landmark' },
+  { id: 'torres-del-paine', name: 'Torres del Paine', country: 'Chile', type: 'landmark' },
+  { id: 'easter-island', name: 'Easter Island', country: 'Chile', type: 'landmark' },
+  { id: 'argentina', name: 'Argentina', country: 'Argentina', type: 'country' },
+  { id: 'peru', name: 'Peru', country: 'Peru', type: 'country' },
+  { id: 'bolivia', name: 'Bolivia', country: 'Bolivia', type: 'country' },
+  { id: 'brazil', name: 'Brazil', country: 'Brazil', type: 'country' },
+  { id: 'united-states', name: 'United States', country: 'United States', type: 'country' },
+  { id: 'spain', name: 'Spain', country: 'Spain', type: 'country' },
 ];
 
 interface DestinationSelectorProps {
@@ -48,26 +50,26 @@ export function DestinationSelector({
 
   return (
     <div className={cn("flex flex-col", className)}>
-      <label className="text-sm font-medium mb-1.5 text-travel-800">{label}</label>
+      {label && <label className="text-sm font-medium mb-1.5 text-gray-700 dark:text-gray-300">{label}</label>}
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <button
             role="combobox"
             aria-expanded={open}
-            className="flex items-center justify-between w-full px-3 py-2.5 rounded-lg border border-travel-200 bg-white/80 backdrop-blur-sm text-left text-sm hover:bg-white hover:border-travel-300 transition-colors"
+            className="flex items-center justify-between w-full px-3 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-background text-left text-sm hover:border-gray-400 dark:hover:border-gray-500 transition-colors"
           >
             {value ? (
               <>
                 <div className="flex items-center gap-2">
-                  <MapPin className="h-4 w-4 text-travel-600" />
-                  <span className="font-medium text-travel-900">{value.name}</span>
-                  <span className="text-xs text-travel-500">{value.country}</span>
+                  <MapPin className="h-4 w-4 text-travel-600 dark:text-travel-400" />
+                  <span className="font-medium text-gray-900 dark:text-gray-100">{value.name}</span>
+                  <span className="text-xs text-gray-500 dark:text-gray-400">{value.country}</span>
                 </div>
               </>
             ) : (
-              <span className="text-travel-400">{placeholder}</span>
+              <span className="text-gray-400 dark:text-gray-500">{placeholder}</span>
             )}
-            <Search className="h-4 w-4 text-travel-500 shrink-0" />
+            <Search className="h-4 w-4 text-gray-500 dark:text-gray-400 shrink-0" />
           </button>
         </PopoverTrigger>
         <PopoverContent className="p-0 w-[300px] max-h-[300px] overflow-hidden">
@@ -87,9 +89,9 @@ export function DestinationSelector({
                     className="flex items-center justify-between"
                   >
                     <div className="flex items-center gap-2">
-                      <MapPin className="h-4 w-4 text-travel-600" />
+                      <MapPin className="h-4 w-4 text-travel-600 dark:text-travel-400" />
                       <span className="font-medium">{destination.name}</span>
-                      <span className="text-xs text-travel-500">{destination.country}</span>
+                      <span className="text-xs text-gray-500 dark:text-gray-400">{destination.country}</span>
                     </div>
                     {value?.id === destination.id && (
                       <Check className="h-4 w-4 text-primary" />
