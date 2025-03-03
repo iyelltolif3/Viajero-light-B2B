@@ -84,7 +84,7 @@ export function DateSelector({ className, onDatesChange }: DateSelectorProps) {
       <div className="flex flex-col sm:flex-row sm:items-center gap-2">
         <div className="flex-1">
           <label htmlFor="departure-date" className="text-sm font-medium text-foreground block mb-1.5">
-            Departure Date
+            Fecha de salida
           </label>
           <Popover open={open} onOpenChange={setOpen}>
             <PopoverTrigger asChild>
@@ -98,7 +98,7 @@ export function DateSelector({ className, onDatesChange }: DateSelectorProps) {
                 )}
               >
                 <CalendarIcon className="mr-2 h-4 w-4" />
-                {dates.departureDate ? format(dates.departureDate, "MMMM d, yyyy") : "Select departure date"}
+                {dates.departureDate ? format(dates.departureDate, "MMMM d, yyyy") : "Selecciona fecha de salida"}
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0 bg-card" align="start">
@@ -114,7 +114,7 @@ export function DateSelector({ className, onDatesChange }: DateSelectorProps) {
                       )}
                       onClick={() => setActiveCalendar('departure')}
                     >
-                      Departure
+                      Salida
                     </button>
                     <button 
                       className={cn(
@@ -125,7 +125,7 @@ export function DateSelector({ className, onDatesChange }: DateSelectorProps) {
                       )}
                       onClick={() => setActiveCalendar('return')}
                     >
-                      Return
+                      Regreso
                     </button>
                   </div>
                   <CalendarComponent
@@ -169,7 +169,7 @@ export function DateSelector({ className, onDatesChange }: DateSelectorProps) {
 
         <div className="flex-1">
           <label htmlFor="return-date" className="text-sm font-medium text-foreground block mb-1.5">
-            Return Date
+            Fecha de regreso
           </label>
           <Button
             id="return-date"
@@ -185,7 +185,7 @@ export function DateSelector({ className, onDatesChange }: DateSelectorProps) {
             }}
           >
             <CalendarIcon className="mr-2 h-4 w-4" />
-            {dates.returnDate ? format(dates.returnDate, "MMMM d, yyyy") : "Select return date"}
+            {dates.returnDate ? format(dates.returnDate, "MMMM d, yyyy") : "Selecciona fecha de regreso"}
           </Button>
         </div>
       </div>

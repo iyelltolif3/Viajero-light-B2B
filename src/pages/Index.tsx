@@ -1,5 +1,4 @@
-
-import React from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Menu, X, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -10,7 +9,7 @@ import { ThemeToggle } from '@/components/theme-toggle';
 
 const Index = () => {
   // State for mobile menu
-  const [isMenuOpen, setIsMenuOpen] = React.useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   // Navigation items
   const navItems = [
@@ -29,7 +28,7 @@ const Index = () => {
           <div className="flex justify-between items-center h-16">
             {/* Logo */}
             <div className="font-bold text-xl text-foreground">
-              Wanderlust Assist
+              Viajero - Light
             </div>
 
             {/* Desktop Navigation */}
@@ -51,7 +50,7 @@ const Index = () => {
               <Link to="/login">
                 <Button variant="outline" size="sm" className="border-border text-foreground hover:text-primary">
                   <User className="h-4 w-4 mr-2" />
-                  Sign In
+                  Registrarse
                 </Button>
               </Link>
             </div>
@@ -67,7 +66,7 @@ const Index = () => {
                 <div className="flex flex-col h-full pb-8">
                   <div className="flex justify-between items-center py-4">
                     <div className="font-bold text-xl text-foreground">
-                      Wanderlust Assist
+                      Viajero - Light
                     </div>
                     <div className="flex items-center space-x-2">
                       <ThemeToggle />

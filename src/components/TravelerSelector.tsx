@@ -63,9 +63,6 @@ export function TravelerSelector({ onTravelersChange, className }: TravelerSelec
 
   return (
     <div className={cn("space-y-1.5", className)}>
-      <label htmlFor="travelers" className="text-sm font-medium text-travel-800 block mb-1.5">
-        Travelers
-      </label>
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <Button
