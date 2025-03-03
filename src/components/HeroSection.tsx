@@ -60,7 +60,7 @@ export function HeroSection({ className }: HeroSectionProps) {
             ¡COTIZA AHORA TU ASISTENCIA DE VIAJE!
           </h1>
           <p className="text-lg md:text-xl text-white/90 max-w-2xl mx-auto">
-            Explore Chile with confidence. We handle the details so you can focus on creating memories.
+          Explora sin límites con seguridad: nosotros protegemos tus planes para que tus únicas compañías sean la aventura y la tranquilidad
           </p>
         </div>
 
@@ -73,7 +73,7 @@ export function HeroSection({ className }: HeroSectionProps) {
                 {/* Origin Country */}
                 <div className="lg:col-span-2">
                   <label className="block text-sm font-semibold mb-1.5 text-gray-700 dark:text-gray-300">
-                    PAÍS DE ORIGEN
+                    País de origen
                   </label>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -90,7 +90,7 @@ export function HeroSection({ className }: HeroSectionProps) {
                 {/* Destination Country */}
                 <div className="lg:col-span-3">
                   <label className="block text-sm font-semibold mb-1.5 text-gray-700 dark:text-gray-300">
-                    PAÍS DE DESTINO
+                    País de destino
                   </label>
                   <DestinationSelector
                     label=""
@@ -112,7 +112,7 @@ export function HeroSection({ className }: HeroSectionProps) {
                 {/* Travelers */}
                 <div className="lg:col-span-2">
                   <label className="block text-sm font-semibold mb-1.5 text-gray-700 dark:text-gray-300">
-                    VIAJEROS
+                    Viajeros
                   </label>
                   <TravelerSelector
                     onTravelersChange={(travelers) => setFormData({ ...formData, travelers })}

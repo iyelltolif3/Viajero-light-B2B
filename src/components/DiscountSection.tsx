@@ -44,11 +44,11 @@ function DiscountCard({
         
         <div className="flex items-center text-white/70 text-xs mb-4">
           <Clock className="h-3 w-3 mr-1" />
-          <span>Expires: {expiryDate}</span>
+          <span>Expira: {expiryDate}</span>
         </div>
         
         <Button variant="outline" className="bg-travel-100/10 backdrop-blur-sm text-white border-white/20 hover:bg-white/20 hover:text-white">
-          View Offer
+          Ver oferta
         </Button>
       </div>
     </div>
@@ -105,11 +105,11 @@ export function DiscountSection({ className }: DiscountSectionProps) {
         <div className="text-center mb-10">
           <div className="inline-flex items-center rounded-full bg-primary/10 px-3 py-1 text-sm font-medium text-primary mb-3">
             <Percent className="mr-2 h-4 w-4" />
-            Limited Time Offers
+            Ofertas por tiempo limitado
           </div>
-          <h2 className="text-3xl md:text-4xl font-bold text-travel-900 mb-4">Exclusive Discounts</h2>
+          <h2 className="text-3xl md:text-4xl font-bold text-travel-900 mb-4">Descuentos exclusivos</h2>
           <p className="text-travel-600 max-w-2xl mx-auto">
-            Take advantage of our special promotions and save on your next adventure.
+            Aprovecha nuestras promociones especiales y ahorre en su próxima aventura.
           </p>
         </div>
 
@@ -137,7 +137,7 @@ export function DiscountSection({ className }: DiscountSectionProps) {
         <div className="text-center mt-10">
           <Button variant="outline" className="border-travel-300 text-travel-800 hover:bg-travel-100">
             <CalendarDays className="mr-2 h-4 w-4" />
-            View All Special Offers
+            Ver todas las ofertas
           </Button>
         </div>
       </div>

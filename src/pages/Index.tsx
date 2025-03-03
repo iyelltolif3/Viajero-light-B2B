@@ -14,10 +14,10 @@ const Index = () => {
   // Navigation items
   const navItems = [
     { label: 'Home', href: '/' },
-    { label: 'Destinations', href: '#destinations' },
-    { label: 'Offers', href: '#offers' },
-    { label: 'About Us', href: '#about' },
-    { label: 'Contact', href: '#contact' },
+    { label: 'Destinos', href: '#destinations' },
+    { label: 'Ofertas', href: '#offers' },
+    { label: 'Sobre nosotros', href: '#about' },
+    { label: 'Contacto', href: '#contact' },
   ];
 
   return (
@@ -114,9 +114,9 @@ const Index = () => {
       <footer className="bg-primary/95 text-primary-foreground py-12 px-4 md:px-8">
         <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-8">
           <div>
-            <h3 className="text-lg font-semibold text-white mb-4">Wanderlust Assist</h3>
+            <h3 className="text-lg font-semibold text-white mb-4">Mawdy - MiA Travel</h3>
             <p className="text-sm text-primary-foreground/80 mb-4">
-              Your trusted partner for memorable travel experiences across Chile.
+            Su socio de confianza para experiencias de viaje memorables en todo Chile.
             </p>
           </div>
           
@@ -183,7 +183,7 @@ const Index = () => {
         
         <div className="max-w-7xl mx-auto mt-8 pt-8 border-t border-primary-foreground/20 text-center">
           <p className="text-sm text-primary-foreground/60">
-            © {new Date().getFullYear()} Wanderlust Assist. All rights reserved.
+            © {new Date().getFullYear()} Mawdy. All rights reserved.
           </p>
         </div>
       </footer>

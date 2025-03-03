@@ -92,7 +92,7 @@ export function LoginForm({ className }: LoginFormProps) {
       <Tabs defaultValue="login" className="w-full">
         <TabsList className="grid grid-cols-2 mb-6">
           <TabsTrigger value="login">Login</TabsTrigger>
-          <TabsTrigger value="register">Register</TabsTrigger>
+          <TabsTrigger value="register">Registrate</TabsTrigger>
         </TabsList>
         
         {/* Social Login Buttons */}
@@ -106,7 +106,7 @@ export function LoginForm({ className }: LoginFormProps) {
             <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round">
               <path d="M17.788 5.108A9 9 0 1021.447 12h-8.5" />
             </svg>
-            Continue with Google
+            Continua con Google
           </Button>
           
           <Button 
@@ -116,14 +116,14 @@ export function LoginForm({ className }: LoginFormProps) {
             disabled={isLoading}
           >
             <Facebook size={16} />
-            Continue with Facebook
+            Continua con Facebook
           </Button>
         </div>
         
         <div className="relative mb-6">
           <Separator />
           <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white px-2 text-xs text-travel-500">
-            OR
+            O
           </span>
         </div>
         
@@ -150,7 +150,7 @@ export function LoginForm({ className }: LoginFormProps) {
               <div className="flex justify-between items-center">
                 <Label htmlFor="password-login">Password</Label>
                 <a href="#" className="text-xs text-primary hover:underline">
-                  Forgot password?
+                  ¿Ha olvidado su contraseña?
                 </a>
               </div>
               <div className="relative">
@@ -179,10 +179,10 @@ export function LoginForm({ className }: LoginFormProps) {
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Logging in...
+                  Iniciando sesión...
                 </>
               ) : (
-                "Sign In"
+                "Iniciar sesión"
               )}
             </Button>
           </form>
@@ -191,7 +191,7 @@ export function LoginForm({ className }: LoginFormProps) {
         <TabsContent value="register">
           <form onSubmit={handleRegister} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email-register">Email</Label>
+              <Label htmlFor="email-register">Correo</Label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-travel-500" />
                 <Input 
@@ -208,7 +208,7 @@ export function LoginForm({ className }: LoginFormProps) {
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="password-register">Password</Label>
+              <Label htmlFor="password-register">Contraseña</Label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-travel-500" />
                 <Input 
@@ -232,7 +232,7 @@ export function LoginForm({ className }: LoginFormProps) {
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="confirm-password">Confirm Password</Label>
+              <Label htmlFor="confirm-password">Confirma Contraseña</Label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-travel-500" />
                 <Input 
@@ -252,18 +252,18 @@ export function LoginForm({ className }: LoginFormProps) {
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Creating account...
+                  Creando cuenta...
                 </>
               ) : (
-                "Create Account"
+                "Crear Cuenta"
               )}
             </Button>
             
             <p className="text-xs text-travel-500 text-center">
-              By registering, you agree to our{" "}
-              <a href="#" className="text-primary hover:underline">Terms of Service</a>
+              Al registrarse, acepta nuestra{" "}
+              <a href="#" className="text-primary hover:underline">Terminos de servicio</a>
               {" "}and{" "}
-              <a href="#" className="text-primary hover:underline">Privacy Policy</a>
+              <a href="#" className="text-primary hover:underline">Política de privacidad</a>
             </p>
           </form>
         </TabsContent>

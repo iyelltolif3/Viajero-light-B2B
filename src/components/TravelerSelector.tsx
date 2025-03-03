@@ -20,7 +20,7 @@ interface TravelerSelectorProps {
 export function TravelerSelector({ onTravelersChange, className }: TravelerSelectorProps) {
   const [open, setOpen] = useState(false);
   const [travelers, setTravelers] = useState<Traveler[]>([
-    { type: 'adult', count: 1, ageDescription: '12+ years' },
+    { type: 'adult', count: 1, ageDescription: '12+years' },
     { type: 'child', count: 0, ageDescription: '2-11 years' },
     { type: 'infant', count: 0, ageDescription: 'Under 2 years' },
   ]);
@@ -63,6 +63,7 @@ export function TravelerSelector({ onTravelersChange, className }: TravelerSelec
 
   return (
     <div className={cn("space-y-1.5", className)}>
+      
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <Button
