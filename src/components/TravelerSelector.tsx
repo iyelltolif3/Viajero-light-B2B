@@ -1,69 +1,46 @@
-
 import React, { useState } from 'react';
 import { Users, ChevronDown, ChevronUp, Plus, Minus, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-
-interface Traveler {
-  type: 'adult' | 'child' | 'infant';
-  count: number;
-  ageDescription: string;
-}
+import { Input } from '@/components/ui/input';
 
 interface TravelerSelectorProps {
-  onTravelersChange?: (travelers: Traveler[]) => void;
+  onTravelersChange?: (ages: number[]) => void;
   className?: string;
 }
 
 export function TravelerSelector({ onTravelersChange, className }: TravelerSelectorProps) {
   const [open, setOpen] = useState(false);
-  const [travelers, setTravelers] = useState<Traveler[]>([
-    { type: 'adult', count: 1, ageDescription: '12+years' },
-    { type: 'child', count: 0, ageDescription: '2-11 years' },
-    { type: 'infant', count: 0, ageDescription: 'Under 2 years' },
-  ]);
+  const [travelers, setTravelers] = useState<number[]>([18]); // Edad inicial por defecto
 
-  // Function to update traveler counts
-  const updateTravelerCount = (type: 'adult' | 'child' | 'infant', increment: boolean) => {
-    const newTravelers = travelers.map(traveler => {
-      if (traveler.type === type) {
-        const newCount = increment ? traveler.count + 1 : Math.max(0, traveler.count - 1);
-        
-        // Adults minimum count is 1
-        if (type === 'adult' && newCount < 1) {
-          return traveler;
-        }
-        
-        return { ...traveler, count: newCount };
-      }
-      return traveler;
-    });
-    
-    setTravelers(newTravelers);
-    onTravelersChange && onTravelersChange(newTravelers);
+  const addTraveler = () => {
+    if (travelers.length < 9) {
+      const newTravelers = [...travelers, 18];
+      setTravelers(newTravelers);
+      onTravelersChange?.(newTravelers);
+    }
   };
 
-  // Get total travelers count
-  const totalTravelers = travelers.reduce((sum, traveler) => sum + traveler.count, 0);
-  
-  // Get summary text
-  const getSummaryText = () => {
-    const parts = [];
-    
-    travelers.forEach(traveler => {
-      if (traveler.count > 0) {
-        parts.push(`${traveler.count} ${traveler.type}${traveler.count !== 1 ? 's' : ''}`);
-      }
-    });
-    
-    return parts.join(', ');
+  const removeTraveler = (index: number) => {
+    if (travelers.length > 1) {
+      const newTravelers = travelers.filter((_, i) => i !== index);
+      setTravelers(newTravelers);
+      onTravelersChange?.(newTravelers);
+    }
+  };
+
+  const updateAge = (index: number, value: string) => {
+    const newAge = Math.max(0, Math.min(120, parseInt(value) || 0));
+    const newTravelers = [...travelers];
+    newTravelers[index] = newAge;
+    setTravelers(newTravelers);
+    onTravelersChange?.(newTravelers);
   };
 
   return (
     <div className={cn("space-y-1.5", className)}>
-      
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <Button
@@ -75,8 +52,8 @@ export function TravelerSelector({ onTravelersChange, className }: TravelerSelec
           >
             <div className="flex items-center">
               <Users className="mr-2 h-4 w-4 text-travel-600" />
-              <span className={cn(totalTravelers > 1 ? "text-travel-800" : "text-travel-400")}>
-                {totalTravelers > 1 ? getSummaryText() : "Select travelers"}
+              <span className={cn(travelers.length > 1 ? "text-travel-800" : "text-travel-400")}>
+                {travelers.length} {travelers.length === 1 ? "viajero" : "viajeros"}
               </span>
             </div>
             {open ? (
@@ -87,56 +64,60 @@ export function TravelerSelector({ onTravelersChange, className }: TravelerSelec
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-[280px] p-0 bg-white">
-          <div className="p-4 space-y-5">
-            {travelers.map((traveler) => (
-              <div key={traveler.type} className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium text-travel-800 capitalize">{traveler.type}s</p>
-                  <p className="text-xs text-travel-500">{traveler.ageDescription}</p>
+          <div className="p-4 space-y-4">
+            <div className="space-y-3">
+              {travelers.map((age, index) => (
+                <div key={index} className="flex items-center gap-2">
+                  <span className="w-12 text-travel-800">Viajero {index + 1}.</span>
+                  <Input
+                    type="number"
+                    value={age}
+                    onChange={(e) => updateAge(index, e.target.value)}
+                    className="h-8 w-20 text-center"
+                    min={0}
+                    max={120}
+                  />
+                  <span className="text-travel-600">años</span>
+                  {index > 0 && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 w-8 p-0 ml-auto"
+                      onClick={() => removeTraveler(index)}
+                    >
+                      <Minus className="h-4 w-4 text-red-500" />
+                    </Button>
+                  )}
                 </div>
-                <div className="flex items-center">
-                  <Button
-                    size="icon"
-                    variant="outline"
-                    className="h-8 w-8 rounded-full"
-                    onClick={() => updateTravelerCount(traveler.type, false)}
-                    disabled={traveler.type === 'adult' && traveler.count <= 1}
-                  >
-                    <Minus className="h-3 w-3" />
-                    <span className="sr-only">Decrease</span>
-                  </Button>
-                  <span className="w-10 text-center font-medium text-travel-800">
-                    {traveler.count}
-                  </span>
-                  <Button
-                    size="icon"
-                    variant="outline"
-                    className="h-8 w-8 rounded-full"
-                    onClick={() => updateTravelerCount(traveler.type, true)}
-                    disabled={totalTravelers >= 9}
-                  >
-                    <Plus className="h-3 w-3" />
-                    <span className="sr-only">Increase</span>
-                  </Button>
-                </div>
-              </div>
-            ))}
-            
-            <Separator />
-            
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="font-medium text-travel-800">Total travelers</p>
-                <p className="text-xs text-travel-500">Maximum 9 travelers</p>
-              </div>
-              <span className="font-semibold text-travel-800">{totalTravelers}</span>
+              ))}
             </div>
-            
-            <Button 
-              className="w-full"
+
+            <Separator />
+
+            <div className="flex justify-between items-center">
+              <div>
+                <p className="text-sm font-medium text-travel-800">Total viajeros</p>
+                <p className="text-xs text-travel-500">Máximo 9 viajeros</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="font-semibold text-travel-800">{travelers.length}</span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 w-8 p-0"
+                  onClick={addTraveler}
+                  disabled={travelers.length >= 9}
+                >
+                  <Plus className="h-4 w-4 text-travel-600" />
+                </Button>
+              </div>
+            </div>
+
+            <Button
+              className="w-full mt-2"
               onClick={() => setOpen(false)}
             >
-              Apply
+              Aplicar
             </Button>
           </div>
         </PopoverContent>

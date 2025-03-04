@@ -8,6 +8,7 @@ import DateSelector from './DateSelector';
 import TravelQuotes from './TravelQuotes';
 import { Input } from './ui/input';
 import TravelerSelector from './TravelerSelector';
+import { calculateQuote } from '@/lib/pricing';
 
 interface HeroSectionProps {
   className?: string;
@@ -22,7 +23,7 @@ export function HeroSection({ className }: HeroSectionProps) {
       departureDate: undefined as Date | undefined,
       returnDate: undefined as Date | undefined,
     },
-    travelers: [] as any[]
+    travelers: [18] as number[]
   });
 
   // Background carousel images
@@ -31,13 +32,39 @@ export function HeroSection({ className }: HeroSectionProps) {
     <div key="image2" className="w-full h-full bg-cover bg-center" style={{ backgroundImage: "url('https://images.unsplash.com/photo-1482938289607-e9573fc25ebb?auto=format&fit=crop&q=80')" }} />,
     <div key="image3" className="w-full h-full bg-cover bg-center" style={{ backgroundImage: "url('https://images.unsplash.com/photo-1501854140801-50d01698950b?auto=format&fit=crop&q=80')" }} />,
   ];
-
+  
   // Function to handle form submission
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     // Here you would typically connect to an API or navigate to results page
     console.log('Search submitted:', formData);
-  };
+
+
+    // Calcular duración en días
+    if (!formData.dates.departureDate || !formData.dates.returnDate) {
+      console.error('Fechas no seleccionadas');
+      return;
+    };
+
+    const duration = Math.ceil(
+      (formData.dates.returnDate!.getTime() - formData.dates.departureDate!.getTime()) / 
+      (1000 * 3600 * 24)
+    );
+
+    // Obtener todas las edades
+    const allAges = formData.travelers.flatMap(t => t.ages);
+
+    // Calcular cotización
+    const quote = calculateQuote({
+      zone: formData.destination.name,
+      duration,
+      travelers: allAges.map(age => ({ age })),
+      category: 'standard' // Puedes agregar un selector de categoría
+    });
+
+    // Mostrar resultados
+    console.log('Cotización:', quote);
+  }
 
   return (
     <section className={cn("relative min-h-screen flex flex-col", className)}>
@@ -115,7 +142,7 @@ export function HeroSection({ className }: HeroSectionProps) {
                     Viajeros
                   </label>
                   <TravelerSelector
-                    onTravelersChange={(travelers) => setFormData({ ...formData, travelers })}
+                    onTravelersChange={(ages) => setFormData(prev => ({...prev, travelers: ages}))}
                     className="w-full"
                   />
                 </div>

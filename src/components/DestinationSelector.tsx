@@ -9,26 +9,20 @@ interface Destination {
   id: string;
   name: string;
   country: string;
-  type: 'city' | 'country' | 'landmark';
+  type: 'city' | 'country' | 'zone';
 }
 
 // Sample Chile-centric destination data
-const popularDestinations: Destination[] = [
-  { id: 'santiago', name: 'Santiago', country: 'Chile', type: 'city' },
-  { id: 'valparaiso', name: 'Valparaíso', country: 'Chile', type: 'city' },
-  { id: 'pucon', name: 'Pucón', country: 'Chile', type: 'city' },
-  { id: 'vina-del-mar', name: 'Viña del Mar', country: 'Chile', type: 'city' },
-  { id: 'san-pedro-atacama', name: 'San Pedro de Atacama', country: 'Chile', type: 'city' },
-  { id: 'puerto-varas', name: 'Puerto Varas', country: 'Chile', type: 'city' },
-  { id: 'chiloe', name: 'Chiloé', country: 'Chile', type: 'landmark' },
-  { id: 'torres-del-paine', name: 'Torres del Paine', country: 'Chile', type: 'landmark' },
-  { id: 'easter-island', name: 'Easter Island', country: 'Chile', type: 'landmark' },
-  { id: 'argentina', name: 'Argentina', country: 'Argentina', type: 'country' },
-  { id: 'peru', name: 'Peru', country: 'Peru', type: 'country' },
-  { id: 'bolivia', name: 'Bolivia', country: 'Bolivia', type: 'country' },
-  { id: 'brazil', name: 'Brazil', country: 'Brazil', type: 'country' },
-  { id: 'united-states', name: 'United States', country: 'United States', type: 'country' },
-  { id: 'spain', name: 'Spain', country: 'Spain', type: 'country' },
+const popularDestinations: Destination[] =[
+  { id: 'sudamerica', name: 'Sudamérica', country: '', type: 'zone' },
+  { id: 'caribe', name: 'Caribe', country: '', type: 'zone' },
+  { id: 'norte-america', name: 'Norte América', country: '', type: 'zone' },
+  { id: 'europa', name: 'Europa', country: '', type: 'zone' },
+  { id: 'asia', name: 'Asia', country: '', type: 'zone' },
+  { id: 'sudeste-asiatico', name: 'Sudeste Asiático', country: '', type: 'zone' },
+  { id: 'oceania', name: 'Oceanía', country: '', type: 'zone' },
+  { id: 'africa', name: 'África', country: '', type: 'zone' },
+  { id: 'mediterraneo', name: 'Mediterráneo', country: '', type: 'zone' },
 ];
 
 interface DestinationSelectorProps {
