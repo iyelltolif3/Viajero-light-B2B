@@ -32,7 +32,7 @@ export function TravelerSelector({ onTravelersChange, className }: TravelerSelec
   };
 
   const updateAge = (index: number, value: string) => {
-    const newAge = Math.max(0, Math.min(120, parseInt(value) || 0));
+    const newAge = Math.max(0, Math.min(85, parseInt(value) || 0));
     const newTravelers = [...travelers];
     newTravelers[index] = newAge;
     setTravelers(newTravelers);
@@ -75,7 +75,7 @@ export function TravelerSelector({ onTravelersChange, className }: TravelerSelec
                     onChange={(e) => updateAge(index, e.target.value)}
                     className="h-8 w-20 text-center"
                     min={0}
-                    max={120}
+                    max={85}
                   />
                   <span className="text-travel-600">años</span>
                   {index > 0 && (

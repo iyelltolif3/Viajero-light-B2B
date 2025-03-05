@@ -9,6 +9,10 @@ import TravelQuotes from './TravelQuotes';
 import { Input } from './ui/input';
 import TravelerSelector from './TravelerSelector';
 import { calculateQuote } from '@/lib/pricing';
+import { QuoteFormData, QuoteCalculationParams } from '@/types';
+import { useAuth } from '@/contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
+import { toast } from '@/components/ui/use-toast';
 
 interface HeroSectionProps {
   className?: string;
@@ -16,15 +20,17 @@ interface HeroSectionProps {
 
 export function HeroSection({ className }: HeroSectionProps) {
   // State for form data
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<QuoteFormData>({
     origin: 'Chile',
-    destination: null as any,
+    destination: null,
     dates: {
-      departureDate: undefined as Date | undefined,
-      returnDate: undefined as Date | undefined,
+      departureDate: undefined,
+      returnDate: undefined,
     },
-    travelers: [18] as number[]
+    travelers: [{ age: 18 }]
   });
+
+  const navigate = useNavigate();
 
   // Background carousel images
   const backgroundImages = [
@@ -36,34 +42,40 @@ export function HeroSection({ className }: HeroSectionProps) {
   // Function to handle form submission
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // Here you would typically connect to an API or navigate to results page
-    console.log('Search submitted:', formData);
-
+    // Validar datos necesarios
+    if (!formData.destination || !formData.dates.departureDate || !formData.dates.returnDate) {
+      toast({
+        title: "Datos incompletos",
+        description: "Por favor, completa todos los campos necesarios.",
+        variant: "destructive"
+      });
+      return;
+    }
 
     // Calcular duración en días
-    if (!formData.dates.departureDate || !formData.dates.returnDate) {
-      console.error('Fechas no seleccionadas');
-      return;
-    };
-
     const duration = Math.ceil(
-      (formData.dates.returnDate!.getTime() - formData.dates.departureDate!.getTime()) / 
+      (formData.dates.returnDate.getTime() - formData.dates.departureDate.getTime()) / 
       (1000 * 3600 * 24)
     );
 
-    // Obtener todas las edades
-    const allAges = formData.travelers.flatMap(t => t.ages);
-
     // Calcular cotización
-    const quote = calculateQuote({
+    const quoteParams: QuoteCalculationParams = {
       zone: formData.destination.name,
       duration,
-      travelers: allAges.map(age => ({ age })),
-      category: 'standard' // Puedes agregar un selector de categoría
-    });
+      travelers: formData.travelers,
+      category: 'standard'
+    };
 
-    // Mostrar resultados
-    console.log('Cotización:', quote);
+    const quote = calculateQuote(quoteParams);
+
+    // Guardar la cotización en sessionStorage para recuperarla en el checkout
+    sessionStorage.setItem('lastQuote', JSON.stringify({
+      quote,
+      formData
+    }));
+
+    // Redirigir al checkout
+    navigate('/checkout');
   }
 
   return (
@@ -95,10 +107,10 @@ export function HeroSection({ className }: HeroSectionProps) {
         <div className="w-full max-w-[1200px] mx-auto px-4">
           <form onSubmit={handleSubmit}>
             {/* Main Form Card */}
-            <div className="bg-white/95 dark:bg-gray-900/95 rounded-2xl shadow-xl p-6">
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-6 items-end">
+            <div className="bg-white/95 dark:bg-gray-900/95 rounded-[20px] shadow-xl p-6">
+              <div className="grid grid-cols-1 lg:grid-cols-[180px_220px_1fr_140px_80px] gap-4 lg:gap-6 items-start">
                 {/* Origin Country */}
-                <div className="lg:col-span-2">
+                <div>
                   <label className="block text-sm font-semibold mb-1.5 text-gray-700 dark:text-gray-300">
                     País de origen
                   </label>
@@ -115,7 +127,7 @@ export function HeroSection({ className }: HeroSectionProps) {
                 </div>
 
                 {/* Destination Country */}
-                <div className="lg:col-span-3">
+                <div>
                   <label className="block text-sm font-semibold mb-1.5 text-gray-700 dark:text-gray-300">
                     País de destino
                   </label>
@@ -124,31 +136,31 @@ export function HeroSection({ className }: HeroSectionProps) {
                     placeholder="¿A dónde viajas?"
                     onSelect={(value) => setFormData({ ...formData, destination: value })}
                     value={formData.destination}
-                    className="w-full"
+                    className="w-full [&_button]:h-12 [&_button]:pl-10"
                   />
                 </div>
 
                 {/* Dates */}
-                <div className="lg:col-span-4">
+                <div>
                   <DateSelector
                     onDatesChange={(dates) => setFormData({ ...formData, dates })}
-                    className="w-full"
+                    className="w-full [&_button]:h-12"
                   />
                 </div>
 
                 {/* Travelers */}
-                <div className="lg:col-span-2">
+                <div>
                   <label className="block text-sm font-semibold mb-1.5 text-gray-700 dark:text-gray-300">
                     Viajeros
                   </label>
                   <TravelerSelector
                     onTravelersChange={(ages) => setFormData(prev => ({...prev, travelers: ages}))}
-                    className="w-full"
+                    className="w-full [&_button]:h-12"
                   />
                 </div>
 
                 {/* Submit Button */}
-                <div className="lg:col-span-1">
+                <div className="self-end">
                   <Button
                     type="submit"
                     className="w-full bg-travel-600/90 hover:bg-travel-700 text-white font-medium h-12 rounded-lg transition-all duration-200 ease-in-out transform hover:scale-[1.02] text-sm"
