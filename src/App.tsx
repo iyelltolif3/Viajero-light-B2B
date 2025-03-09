@@ -5,6 +5,7 @@ import { Toaster as Sonner } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider } from '@/components/theme-provider';
+import { Navbar } from '@/components/Navbar';
 import AppRoutes from '@/routes';
 
 const queryClient = new QueryClient();
@@ -16,7 +17,12 @@ function App() {
         <TooltipProvider>
           <Router>
             <AuthProvider>
-              <AppRoutes />
+              <div className="min-h-screen flex flex-col">
+                <Navbar />
+                <main className="flex-1">
+                  <AppRoutes />
+                </main>
+              </div>
               <Toaster />
               <Sonner />
             </AuthProvider>

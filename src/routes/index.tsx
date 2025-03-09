@@ -3,6 +3,10 @@ import { useAuth } from '@/contexts/AuthContext';
 import Login from '@/pages/Login';
 import NotFound from '@/pages/NotFound';
 import Index from '@/pages/Index';
+import Profile from '@/pages/Profile';
+import Vouchers from '@/pages/Vouchers';
+import Planes from '@/pages/Planes';
+import Checkout from '@/pages/Checkout';
 
 // Componente para rutas protegidas (requieren autenticación)
 const PrivateRoute = ({ children }: { children: React.ReactNode }) => {
@@ -44,6 +48,7 @@ export default function AppRoutes() {
     <Routes>
       {/* Rutas públicas */}
       <Route path="/" element={<Index />} />
+      <Route path="/planes" element={<Planes />} />
       
       {/* Rutas de autenticación */}
       <Route 
@@ -57,24 +62,17 @@ export default function AppRoutes() {
 
       {/* Rutas protegidas */}
       <Route
-        path="/checkout/*"
+        path="/checkout"
         element={
           <PrivateRoute>
-            {/* Aquí irían los componentes relacionados con la compra */}
-            <div>Proceso de compra (protegido)</div>
+            <Checkout />
           </PrivateRoute>
         }
       />
 
-      <Route
-        path="/my-account/*"
-        element={
-          <PrivateRoute>
-            {/* Aquí irían los componentes relacionados con la cuenta del usuario */}
-            <div>Mi cuenta (protegido)</div>
-          </PrivateRoute>
-        }
-      />
+      <Route path="/my-account" element={<PrivateRoute><Profile /></PrivateRoute>} />
+      <Route path="/my-account/profile" element={<PrivateRoute><Profile /></PrivateRoute>} />
+      <Route path="/my-account/vouchers" element={<PrivateRoute><Vouchers /></PrivateRoute>} />
 
       {/* Ruta 404 */}
       <Route path="*" element={<NotFound />} />

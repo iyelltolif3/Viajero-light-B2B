@@ -52,30 +52,24 @@ export function HeroSection({ className }: HeroSectionProps) {
       return;
     }
 
-    // Calcular duración en días
-    const duration = Math.ceil(
-      (formData.dates.returnDate.getTime() - formData.dates.departureDate.getTime()) / 
-      (1000 * 3600 * 24)
-    );
-
-    // Calcular cotización
-    const quoteParams: QuoteCalculationParams = {
-      zone: formData.destination.name,
-      duration,
-      travelers: formData.travelers,
-      category: 'standard'
+    // Preparar los datos de la cotización
+    const quotationData = {
+      startDate: formData.dates.departureDate.toISOString().split('T')[0],
+      endDate: formData.dates.returnDate.toISOString().split('T')[0],
+      travelers: formData.travelers.map(traveler => ({
+        name: '',
+        age: traveler.age.toString(),
+        passport: '',
+        nationality: ''
+      }))
     };
 
-    const quote = calculateQuote(quoteParams);
-
-    // Guardar la cotización en sessionStorage para recuperarla en el checkout
-    sessionStorage.setItem('lastQuote', JSON.stringify({
-      quote,
-      formData
-    }));
-
-    // Redirigir al checkout
-    navigate('/checkout');
+    // Redirigir a la página de planes con los datos de la cotización
+    navigate('/planes', { 
+      state: { 
+        quotationData 
+      } 
+    });
   }
 
   return (
