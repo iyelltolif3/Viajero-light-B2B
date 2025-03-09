@@ -51,7 +51,7 @@ export function TravelerSelector({ onTravelersChange, className }: TravelerSelec
             className="w-full justify-between font-normal bg-white/80 backdrop-blur-sm group"
           >
             <div className="flex items-center">
-              <Users className="mr-2 h-4 w-4 text-travel-600" />
+              <Users className="mr-2 h-4 w-4 text-gray-700" />
               <span className={cn(travelers.length > 1 ? "text-travel-800" : "text-travel-400")}>
                 {travelers.length} {travelers.length === 1 ? "viajero" : "viajeros"}
               </span>

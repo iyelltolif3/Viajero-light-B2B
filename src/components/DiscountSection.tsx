@@ -30,7 +30,6 @@ function DiscountCard({
       <div className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-105"
            style={{ backgroundImage: `url(${imageSrc})` }} />
       <div className="absolute inset-0 bg-gradient-to-t from-travel-950/90 via-travel-900/50 to-travel-950/20" />
-      
       <div className="relative h-full flex flex-col justify-end p-6 z-10">
         <div className="mb-auto">
           <span className="inline-flex items-center rounded-full bg-primary/90 px-2.5 py-1 text-xs font-semibold text-white backdrop-blur-sm">
@@ -100,15 +99,15 @@ export function DiscountSection({ className }: DiscountSectionProps) {
   ));
 
   return (
-    <section className={cn("py-16 px-4 md:px-8 lg:px-16 bg-travel-50", className)}>
+    <section className={cn("py-16 px-4 md:px-8 lg:px-16", className)}>
       <div className="max-w-7xl mx-auto">
         <div className="text-center mb-10">
           <div className="inline-flex items-center rounded-full bg-primary/10 px-3 py-1 text-sm font-medium text-primary mb-3">
             <Percent className="mr-2 h-4 w-4" />
             Ofertas por tiempo limitado
           </div>
-          <h2 className="text-3xl md:text-4xl font-bold text-travel-900 mb-4">Descuentos exclusivos</h2>
-          <p className="text-travel-600 max-w-2xl mx-auto">
+          <h2 className="text-3xl md:text-4xl font-bold text-gray-700 mb-4">Descuentos exclusivos</h2>
+          <p className=" text-gray-700 max-w-2xl mx-auto">
             Aprovecha nuestras promociones especiales y ahorre en su próxima aventura.
           </p>
         </div>

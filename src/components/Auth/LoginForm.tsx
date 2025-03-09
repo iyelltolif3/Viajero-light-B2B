@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Mail, Lock, Eye, EyeOff, Facebook, Loader2 } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -25,17 +25,37 @@ export function LoginForm({ className }: LoginFormProps) {
   
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { signIn, signUp } = useAuth();
+  const { signIn, signUp, signInWithGoogle } = useAuth();
+
+  const handleGoogleLogin = async () => {
+    setIsLoading(true);
+    try {
+      await signInWithGoogle();
+      toast({
+        title: "Inicio de sesión exitoso",
+        description: "¡Bienvenido a Viajero Light!",
+      });
+      navigate('/');
+    } catch (error: any) {
+      toast({
+        title: "Error al iniciar sesión con Google",
+        description: error.message,
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setAuthForm(prev => ({ ...prev, [name]: value }));
   };
-
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-
+  
     try {
       await signIn(authForm.email, authForm.password);
       toast({
@@ -53,7 +73,6 @@ export function LoginForm({ className }: LoginFormProps) {
       setIsLoading(false);
     }
   };
-
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -67,7 +86,7 @@ export function LoginForm({ className }: LoginFormProps) {
     }
     
     setIsLoading(true);
-
+  
     try {
       await signUp(authForm.email, authForm.password);
       toast({
@@ -85,7 +104,6 @@ export function LoginForm({ className }: LoginFormProps) {
       setIsLoading(false);
     }
   };
-
   const handleSocialLogin = (provider: string) => {
     // TODO: Implement social login with Supabase
     toast({
@@ -93,7 +111,6 @@ export function LoginForm({ className }: LoginFormProps) {
       description: `El inicio de sesión con ${provider} estará disponible pronto.`,
     });
   };
-
   return (
     <div className={cn("backdrop-blur-md bg-white/80 dark:bg-gray-900/80 rounded-xl p-8 w-full max-w-md shadow-xl border border-white/20", className)}>
       <Tabs defaultValue="login" className="w-full">
@@ -105,13 +122,12 @@ export function LoginForm({ className }: LoginFormProps) {
             Registrarse
           </TabsTrigger>
         </TabsList>
-        
         {/* Social Login Buttons */}
         <div className="mb-6 space-y-3">
           <Button 
             variant="outline" 
             className="w-full bg-white/90 dark:bg-gray-800/90 text-gray-800 dark:text-white border-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700/90 flex items-center justify-center gap-2 transition-colors"
-            onClick={() => handleSocialLogin('Google')}
+            onClick={handleGoogleLogin}
             disabled={isLoading}
           >
             <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round">
@@ -120,15 +136,6 @@ export function LoginForm({ className }: LoginFormProps) {
             Continuar con Google
           </Button>
           
-          <Button 
-            variant="outline" 
-            className="w-full bg-[#1877F2] hover:bg-[#1877F2]/90 text-white border-none flex items-center justify-center gap-2 transition-colors"
-            onClick={() => handleSocialLogin('Facebook')}
-            disabled={isLoading}
-          >
-            <Facebook size={16} />
-            Continuar con Facebook
-          </Button>
         </div>
         
         <div className="relative mb-6">

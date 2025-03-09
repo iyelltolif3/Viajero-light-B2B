@@ -20,6 +20,22 @@ export const signInWithEmail = async (email: string, password: string) => {
   return data;
 };
 
+export const signInWithGoogle = async () => {
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      redirectTo: `${window.location.origin}`,
+      queryParams: {
+        access_type: 'offline',
+        prompt: 'consent'
+      }
+    }
+  });
+  
+  if (error) throw error;
+  return { data, error };
+};
+
 export const signUpWithEmail = async (email: string, password: string) => {
   const { data, error } = await supabase.auth.signUp({
     email,
@@ -51,4 +67,4 @@ export const getCurrentUser = async () => {
 
 export const onAuthStateChange = (callback: (event: any, session: any) => void) => {
   return supabase.auth.onAuthStateChange(callback);
-}; 
+};

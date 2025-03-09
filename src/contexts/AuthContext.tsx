@@ -1,12 +1,13 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User } from '@supabase/supabase-js';
-import { supabase, signInWithEmail, signUpWithEmail, signOut, resetPassword } from '@/lib/supabase';
+import { supabase, signInWithEmail, signUpWithEmail, signOut, resetPassword, signInWithGoogle } from '@/lib/supabase';
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string) => Promise<void>;
+  signInWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
   requestPasswordReset: (email: string) => Promise<void>;
 }
@@ -45,6 +46,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw error;
       }
     },
+    signInWithGoogle: async () => {
+      try {
+        const { data, error } = await signInWithGoogle();
+        if (error) throw error;
+      } catch (error) {
+        console.error('Error signing in with Google:', error);
+        throw error;
+      }
+    },
     signUp: async (email: string, password: string) => {
       try {
         const { user } = await signUpWithEmail(email, password);
@@ -80,10 +90,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
-export function useAuth() {
+export const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
-} 
+};

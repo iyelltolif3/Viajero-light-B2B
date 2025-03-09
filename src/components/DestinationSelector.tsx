@@ -54,6 +54,7 @@ export function DestinationSelector({
           >
             {value ? (
               <>
+                
                 <div className="flex items-center gap-2">
                   <MapPin className="h-4 w-4 text-travel-600 dark:text-travel-400" />
                   <span className="font-medium text-gray-900 dark:text-gray-100">{value.name}</span>
