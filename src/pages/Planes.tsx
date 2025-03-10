@@ -3,87 +3,13 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useNavigate, useLocation } from 'react-router-dom';
-
-const plans = [
-  {
-    name: 'Plan Básico',
-    description: 'Cobertura esencial para viajes cortos',
-    price: 4.99,
-    priceDetail: 'por día / por persona',
-    features: [
-      'Asistencia médica hasta USD 60.000',
-      'Gastos por COVID-19',
-      'Medicamentos ambulatorios',
-      'Odontología de urgencia',
-      'Traslados sanitarios',
-    ],
-    badge: '',
-    maxDays: 30,
-  },
-  {
-    name: 'Plan Premium',
-    description: 'Protección completa para todo tipo de viajes',
-    price: 7.99,
-    priceDetail: 'por día / por persona',
-    features: [
-      'Asistencia médica hasta USD 150.000',
-      'Gastos por COVID-19',
-      'Compensación por pérdida de equipaje',
-      'Gastos de hotel por convalecencia',
-      'Repatriación sanitaria',
-      'Medicamentos ambulatorios',
-      'Odontología de urgencia',
-      'Traslados sanitarios',
-    ],
-    badge: 'Popular',
-    maxDays: 60,
-  },
-  {
-    name: 'Plan Elite',
-    description: 'Máxima cobertura para viajes exigentes',
-    price: 12.99,
-    priceDetail: 'por día / por persona',
-    features: [
-      'Asistencia médica hasta USD 250.000',
-      'Gastos por COVID-19',
-      'Compensación por pérdida de equipaje',
-      'Gastos de hotel por convalecencia',
-      'Repatriación sanitaria',
-      'Medicamentos ambulatorios',
-      'Odontología de urgencia',
-      'Traslados sanitarios',
-      'Deportes de aventura',
-      'Seguro de dispositivos electrónicos',
-    ],
-    badge: '',
-    maxDays: 90,
-  },
-  {
-    name: 'Plan Anual',
-    description: 'Cobertura continua para viajeros frecuentes',
-    price: 299.99,
-    priceDetail: 'anual / por persona',
-    features: [
-      'Asistencia médica hasta USD 200.000',
-      'Gastos por COVID-19',
-      'Compensación por pérdida de equipaje',
-      'Gastos de hotel por convalecencia',
-      'Repatriación sanitaria',
-      'Medicamentos ambulatorios',
-      'Odontología de urgencia',
-      'Traslados sanitarios',
-      'Múltiples viajes durante el año',
-      'Cobertura mundial',
-    ],
-    badge: 'Mejor valor',
-    maxDays: 365,
-  },
-];
+import { usePlansStore } from '@/store/plansStore';
 
 export default function Planes() {
   const navigate = useNavigate();
   const location = useLocation();
   const { state } = location;
+  const { plans } = usePlansStore();
 
   return (
     <div className="py-12 px-4 md:px-6 lg:px-8">
@@ -96,9 +22,9 @@ export default function Planes() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-7xl mx-auto">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         {plans.map((plan) => (
-          <Card key={plan.name} className="flex flex-col">
+          <Card key={plan.id} className="flex flex-col">
             <CardHeader>
               <div className="flex justify-between items-start">
                 <div>
@@ -132,8 +58,19 @@ export default function Planes() {
                 variant={plan.badge === 'Popular' ? 'default' : 'outline'}
                 onClick={() => navigate('/checkout', { 
                   state: { 
-                    selectedPlan: plan,
-                    quotationData: state?.quotationData // Pasar los datos de la cotización
+                    selectedPlan: {
+                      ...plan,
+                      coverageDetails: {
+                        ...plan.coverageDetails,
+                        medicalCoverage: plan.coverageDetails.medicalCoverage,
+                        luggageCoverage: plan.coverageDetails.luggageCoverage,
+                        cancellationCoverage: plan.coverageDetails.cancellationCoverage,
+                        covidCoverage: plan.coverageDetails.covidCoverage,
+                        preExistingConditions: plan.coverageDetails.preExistingConditions,
+                        adventureSports: plan.coverageDetails.adventureSports,
+                      }
+                    },
+                    quotationData: state?.quotationData
                   } 
                 })}
               >
@@ -144,7 +81,7 @@ export default function Planes() {
         ))}
       </div>
 
-      <div className="mt-12 text-center">
+      <div className="text-center">
         <p className="text-sm text-muted-foreground mb-4">
           Todos nuestros planes incluyen asistencia 24/7 y cobertura COVID-19
         </p>

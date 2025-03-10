@@ -4,9 +4,17 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/contexts/AuthContext';
-import { Check, ArrowLeft } from 'lucide-react';
+import { Check, ArrowLeft, Calculator } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import { toast } from '@/components/ui/use-toast';
+import { toast } from 'sonner';
+import DateSelector from '@/components/DateSelector';
+import DestinationSelector from '@/components/DestinationSelector';
+import TravelerSelector from '@/components/TravelerSelector';
+import { calculateQuote } from '@/lib/pricing';
+import type { Destination, QuoteFormData, Assistance, QuoteCalculationParams } from '@/types';
+import { useAssistancesStore } from '@/store/assistancesStore';
+import { usePlansStore } from '@/store/plansStore';
+import { differenceInDays } from 'date-fns';
 
 interface LocationState {
   selectedPlan: {
@@ -15,10 +23,19 @@ interface LocationState {
     priceDetail: string;
     features: string[];
     maxDays: number;
+    coverageDetails: {
+      medicalCoverage: number;
+      luggageCoverage: number;
+      cancellationCoverage: number;
+      covidCoverage: boolean;
+      preExistingConditions: boolean;
+      adventureSports: boolean;
+    };
   };
   quotationData?: {
     startDate: string;
     endDate: string;
+    destination?: Destination;
     travelers: {
       name: string;
       age: string;
@@ -28,37 +45,105 @@ interface LocationState {
   };
 }
 
+interface CheckoutFormData {
+  destination: Destination | null;
+  dates: {
+    departureDate: Date | null;
+    returnDate: Date | null;
+  };
+  travelers: {
+    age: number;
+  }[];
+}
+
+interface QuoteResult {
+  subtotal: number;
+  tax: number;
+  commission: number;
+  total: number;
+  pricePerDay: number;
+  currency: string;
+}
+
 export default function Checkout() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuth();
   const { selectedPlan, quotationData } = (location.state as LocationState) || {};
+  const { addAssistance } = useAssistancesStore();
   
-  const [formData, setFormData] = useState({
-    startDate: '',
-    endDate: '',
-    travelers: [{
-      name: '',
-      age: '',
-      passport: '',
-      nationality: ''
-    }]
+  const [formData, setFormData] = useState<CheckoutFormData>({
+    destination: null,
+    dates: {
+      departureDate: null,
+      returnDate: null
+    },
+    travelers: []
   });
+
+  const [quoteData, setQuoteData] = useState<QuoteFormData>({
+    origin: 'Chile',
+    destination: null,
+    dates: {
+      departureDate: undefined,
+      returnDate: undefined,
+    },
+    travelers: [{ age: 18 }]
+  });
+
+  const [totalPrice, setTotalPrice] = useState(selectedPlan?.price || 0);
+  const [quote, setQuote] = useState<QuoteResult | null>(null);
 
   useEffect(() => {
     if (quotationData) {
       setFormData({
-        startDate: quotationData.startDate || '',
-        endDate: quotationData.endDate || '',
-        travelers: quotationData.travelers || [{
-          name: '',
-          age: '',
-          passport: '',
-          nationality: ''
-        }]
+        destination: quotationData.destination || null,
+        dates: {
+          departureDate: quotationData.startDate ? new Date(quotationData.startDate) : null,
+          returnDate: quotationData.endDate ? new Date(quotationData.endDate) : null
+        },
+        travelers: quotationData.travelers.map(t => ({ age: parseInt(t.age) })),
+      });
+
+      // Inicializar quoteData con los datos de la cotización
+      setQuoteData({
+        origin: 'Chile',
+        destination: quotationData.destination || null,
+        dates: {
+          departureDate: quotationData.startDate ? new Date(quotationData.startDate) : undefined,
+          returnDate: quotationData.endDate ? new Date(quotationData.endDate) : undefined,
+        },
+        travelers: quotationData.travelers.map(t => ({ age: parseInt(t.age) }))
       });
     }
   }, [quotationData]);
+
+  useEffect(() => {
+    recalculatePrice();
+  }, [formData]);
+
+  const recalculatePrice = () => {
+    if (!formData.destination || !formData.dates.departureDate || !formData.dates.returnDate) {
+      return;
+    }
+
+    try {
+      const duration = differenceInDays(formData.dates.returnDate, formData.dates.departureDate);
+      const quote = calculateQuote({
+        zone: formData.destination.region,
+        duration,
+        travelers: formData.travelers,
+        category: selectedPlan?.name || 'basic'
+      });
+
+      setQuote(quote);
+    } catch (error) {
+      console.error('Error calculating price:', error);
+      toast.error('Error al calcular el precio', {
+        description: 'Por favor, intente nuevamente.'
+      });
+    }
+  };
 
   if (!selectedPlan) {
     return (
@@ -76,12 +161,67 @@ export default function Checkout() {
     );
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    toast({
-      title: "Procesando tu compra",
-      description: "Estamos preparando tu asistencia de viaje...",
-    });
+    
+    if (!formData.destination || !selectedPlan || !quote) {
+      toast.warning('Campos incompletos', {
+        description: 'Por favor complete todos los campos requeridos'
+      });
+      return;
+    }
+
+    try {
+      const assistance: Omit<Assistance, 'id'> = {
+        planName: selectedPlan.name,
+        status: 'future',
+        startDate: formData.dates.departureDate?.toISOString() || '',
+        endDate: formData.dates.returnDate?.toISOString() || '',
+        travelers: formData.travelers.map(t => ({
+          name: '',
+          age: t.age,
+          passport: '',
+          nationality: ''
+        })),
+        totalPrice: quote.total,
+        planDetails: {
+          coverageDetails: selectedPlan.coverageDetails,
+          features: selectedPlan.features
+        },
+        destination: {
+          name: formData.destination.name,
+          region: formData.destination.region
+        }
+      };
+
+      // Aquí iría la lógica para guardar la asistencia
+      console.log('Asistencia a guardar:', assistance);
+      toast.success('¡Éxito!', {
+        description: 'La asistencia ha sido creada correctamente.'
+      });
+    } catch (error) {
+      console.error('Error al crear la asistencia:', error);
+      toast.error('Error', {
+        description: 'Error al crear la asistencia. Por favor, intente nuevamente.'
+      });
+    }
+  };
+
+  const handleRemoveTraveler = (index: number) => {
+    if (formData.travelers.length > 1) {
+      const newFormTravelers = formData.travelers.filter((_, i) => i !== index);
+      setFormData(prev => ({ ...prev, travelers: newFormTravelers }));
+
+      const newQuoteTravelers = quoteData.travelers.filter((_, i) => i !== index);
+      setQuoteData(prev => ({ ...prev, travelers: newQuoteTravelers }));
+      
+      // Recalcular precio después de eliminar viajero
+      setTimeout(recalculatePrice, 0);
+    } else {
+      toast.warning('No se puede eliminar', {
+        description: 'Debe haber al menos un viajero'
+      });
+    }
   };
 
   return (
@@ -107,99 +247,101 @@ export default function Checkout() {
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="startDate">Fecha de inicio</Label>
-                    <Input
-                      id="startDate"
-                      type="date"
-                      value={formData.startDate}
-                      onChange={(e) => setFormData({...formData, startDate: e.target.value})}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="endDate">Fecha de fin</Label>
-                    <Input
-                      id="endDate"
-                      type="date"
-                      value={formData.endDate}
-                      onChange={(e) => setFormData({...formData, endDate: e.target.value})}
-                      required
-                    />
-                  </div>
-                </div>
+                {/* Sección de Recotización */}
+                <Card className="border-dashed">
+                  <CardHeader className="pb-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <CardTitle className="text-lg">Recotizar</CardTitle>
+                        <CardDescription>
+                          Modifica los detalles del viaje para actualizar el precio
+                        </CardDescription>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={recalculatePrice}
+                        type="button"
+                      >
+                        <Calculator className="h-4 w-4 mr-2" />
+                        Recalcular
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div>
+                      <Label>Destino</Label>
+                      <DestinationSelector
+                        label=""
+                        value={quoteData.destination}
+                        onSelect={(destination) => {
+                          setQuoteData(prev => ({ ...prev, destination }));
+                        }}
+                        className="w-full"
+                      />
+                    </div>
+                    <div>
+                      <Label>Fechas</Label>
+                      <DateSelector
+                        onDatesChange={(dates) => {
+                          setQuoteData(prev => ({ ...prev, dates }));
+                          setFormData(prev => ({
+                            ...prev,
+                            dates: {
+                              departureDate: dates.departureDate,
+                              returnDate: dates.returnDate
+                            }
+                          }));
+                        }}
+                        className="w-full"
+                      />
+                    </div>
+                    <div>
+                      <Label>Viajeros</Label>
+                      <TravelerSelector
+                        onTravelersChange={(travelers) => {
+                          setQuoteData(prev => ({ ...prev, travelers }));
+                          setFormData(prev => ({
+                            ...prev,
+                            travelers: travelers.map(t => ({ age: t.age }))
+                          }));
+                        }}
+                        className="w-full"
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
 
                 {/* Información de viajeros */}
                 <div className="space-y-4">
-                  <h3 className="font-medium">Información de Viajeros</h3>
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-medium">Información de Viajeros</h3>
+                    <span className="text-sm text-muted-foreground">
+                      {formData.travelers.length} {formData.travelers.length === 1 ? 'viajero' : 'viajeros'}
+                    </span>
+                  </div>
                   {formData.travelers.map((traveler, index) => (
-                    <div key={index} className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 border rounded-lg">
-                      <div className="space-y-2">
-                        <Label htmlFor={`name-${index}`}>Nombre completo</Label>
-                        <Input
-                          id={`name-${index}`}
-                          value={traveler.name}
-                          onChange={(e) => {
-                            const newTravelers = [...formData.travelers];
-                            newTravelers[index].name = e.target.value;
-                            setFormData({...formData, travelers: newTravelers});
-                          }}
-                          required
-                        />
-                      </div>
+                    <div key={index} className="relative grid grid-cols-1 md:grid-cols-2 gap-4 p-4 border rounded-lg">
+                      {formData.travelers.length > 1 && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="absolute -top-2 -right-2 h-8 w-8 rounded-full p-0"
+                          onClick={() => handleRemoveTraveler(index)}
+                        >
+                          ×
+                        </Button>
+                      )}
                       <div className="space-y-2">
                         <Label htmlFor={`age-${index}`}>Edad</Label>
                         <Input
                           id={`age-${index}`}
-                          type="number"
-                          value={traveler.age}
-                          onChange={(e) => {
-                            const newTravelers = [...formData.travelers];
-                            newTravelers[index].age = e.target.value;
-                            setFormData({...formData, travelers: newTravelers});
-                          }}
-                          required
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor={`passport-${index}`}>Pasaporte</Label>
-                        <Input
-                          id={`passport-${index}`}
-                          value={traveler.passport}
-                          onChange={(e) => {
-                            const newTravelers = [...formData.travelers];
-                            newTravelers[index].passport = e.target.value;
-                            setFormData({...formData, travelers: newTravelers});
-                          }}
-                          required
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor={`nationality-${index}`}>Nacionalidad</Label>
-                        <Input
-                          id={`nationality-${index}`}
-                          value={traveler.nationality}
-                          onChange={(e) => {
-                            const newTravelers = [...formData.travelers];
-                            newTravelers[index].nationality = e.target.value;
-                            setFormData({...formData, travelers: newTravelers});
-                          }}
-                          required
+                          value={traveler.age.toString()}
+                          readOnly
                         />
                       </div>
                     </div>
                   ))}
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setFormData({
-                      ...formData,
-                      travelers: [...formData.travelers, { name: '', age: '', passport: '', nationality: '' }]
-                    })}
-                  >
-                    Agregar Viajero
-                  </Button>
                 </div>
 
                 <Button type="submit" className="w-full">
@@ -221,7 +363,7 @@ export default function Checkout() {
                 <div>
                   <h4 className="font-medium">{selectedPlan.name}</h4>
                   <p className="text-sm text-muted-foreground">
-                    ${selectedPlan.price} {selectedPlan.priceDetail}
+                    ${totalPrice.toFixed(2)} {selectedPlan.priceDetail}
                   </p>
                 </div>
                 <div className="space-y-2">
@@ -235,17 +377,52 @@ export default function Checkout() {
                     ))}
                   </ul>
                 </div>
+                <div className="border-t pt-4">
+                  <h4 className="text-sm font-medium mb-2">Detalles de Cobertura:</h4>
+                  <ul className="space-y-2 text-sm">
+                    <li className="flex justify-between">
+                      <span>Cobertura Médica:</span>
+                      <span>USD {selectedPlan.coverageDetails.medicalCoverage.toLocaleString()}</span>
+                    </li>
+                    <li className="flex justify-between">
+                      <span>Cobertura de Equipaje:</span>
+                      <span>USD {selectedPlan.coverageDetails.luggageCoverage.toLocaleString()}</span>
+                    </li>
+                    <li className="flex justify-between">
+                      <span>Cancelación de Viaje:</span>
+                      <span>USD {selectedPlan.coverageDetails.cancellationCoverage.toLocaleString()}</span>
+                    </li>
+                    {selectedPlan.coverageDetails.covidCoverage && (
+                      <li className="flex items-center">
+                        <Check className="h-4 w-4 text-primary shrink-0 mr-2" />
+                        Cobertura COVID-19
+                      </li>
+                    )}
+                    {selectedPlan.coverageDetails.preExistingConditions && (
+                      <li className="flex items-center">
+                        <Check className="h-4 w-4 text-primary shrink-0 mr-2" />
+                        Condiciones Preexistentes
+                      </li>
+                    )}
+                    {selectedPlan.coverageDetails.adventureSports && (
+                      <li className="flex items-center">
+                        <Check className="h-4 w-4 text-primary shrink-0 mr-2" />
+                        Deportes de Aventura
+                      </li>
+                    )}
+                  </ul>
+                </div>
               </div>
             </CardContent>
             <CardFooter className="flex flex-col">
               <div className="w-full pt-4 border-t">
                 <div className="flex justify-between mb-2">
                   <span>Subtotal</span>
-                  <span>${selectedPlan.price}</span>
+                  <span>${totalPrice.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between font-medium">
                   <span>Total</span>
-                  <span>${selectedPlan.price}</span>
+                  <span>${totalPrice.toFixed(2)}</span>
                 </div>
               </div>
             </CardFooter>

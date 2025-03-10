@@ -9,15 +9,15 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground hover:bg-primary/90",
+        default: "btn-primary",
         destructive:
           "bg-destructive text-destructive-foreground hover:bg-destructive/90",
         outline:
-          "border border-input bg-background hover:bg-accent hover:text-accent-foreground",
+          "btn-outline-primary",
         secondary:
-          "bg-secondary text-secondary-foreground hover:bg-secondary/80",
+          "btn-secondary",
         ghost: "hover:bg-accent hover:text-accent-foreground",
-        link: "text-primary underline-offset-4 hover:underline",
+        link: "text-primary-color underline-offset-4 hover:underline",
       },
       size: {
         default: "h-10 px-4 py-2",
@@ -40,12 +40,31 @@ export interface ButtonProps
 }
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, asChild = false, ...props }, ref) => {
+  ({ className, variant, size, asChild = false, style, ...props }, ref) => {
     const Comp = asChild ? Slot : "button"
+    
+    const baseStyle: React.CSSProperties = {
+      ...style
+    };
+    
+    if (variant === 'default' && !className?.includes('bg-')) {
+      baseStyle.backgroundColor = 'var(--primary)';
+      baseStyle.color = 'white';
+    } else if (variant === 'secondary' && !className?.includes('bg-')) {
+      baseStyle.backgroundColor = 'var(--secondary)';
+      baseStyle.color = 'white';
+    } else if (variant === 'outline' && !className?.includes('border-')) {
+      baseStyle.borderColor = 'var(--primary)';
+      baseStyle.color = 'var(--primary)';
+    } else if (variant === 'link' && !className?.includes('text-')) {
+      baseStyle.color = 'var(--primary)';
+    }
+    
     return (
       <Comp
         className={cn(buttonVariants({ variant, size, className }))}
         ref={ref}
+        style={baseStyle}
         {...props}
       />
     )

@@ -1,3 +1,7 @@
+import { QuoteCalculationParams } from '@/types';
+import { useSettingsStore } from '@/store/settingsStore';
+import { usePlansStore } from '@/store/plansStore';
+
 // Precios base por categoría (USD por día)
 const BASE_PRICES = {
     basic: 5,
@@ -25,36 +29,48 @@ const BASE_PRICES = {
     '65+': 1.5
   };
   
-  export const calculateQuote = (inputs: {
-    zone: string;
-    duration: number;
-    travelers: Array<{ age: number }>;
-    category: keyof typeof BASE_PRICES;
-  }) => {
-    const basePrice = BASE_PRICES[inputs.category];
-    const zoneMultiplier = ZONE_MULTIPLIERS[inputs.zone] || 1;
-    
-    const ageFactor = inputs.travelers.reduce((sum, traveler) => {
-      let factor = AGE_FACTORS['12-64'];
-      if (traveler.age <= 11) factor = AGE_FACTORS['0-11'];
-      if (traveler.age >= 65) factor = AGE_FACTORS['65+'];
-      return sum + factor;
-    }, 0) / inputs.travelers.length;
-  
-    return {
-      total: Number((
-        basePrice *
-        inputs.duration *
-        zoneMultiplier *
-        ageFactor *
-        inputs.travelers.length
-      ).toFixed(2)),
-      breakdown: {
-        basePrice,
-        zoneMultiplier,
-        ageFactor: Number(ageFactor.toFixed(2)),
-        duration: inputs.duration,
-        travelers: inputs.travelers.length
-      }
-    };
+export function calculateQuote(params: QuoteCalculationParams) {
+  const { settings } = useSettingsStore.getState();
+  const { plans } = usePlansStore.getState();
+
+  // Encontrar el plan
+  const plan = plans.find(p => p.name.toLowerCase().includes(params.category.toLowerCase()));
+  if (!plan) throw new Error('Plan no encontrado');
+
+  // Encontrar la zona
+  const zone = settings.zones.find(z => z.name === params.zone);
+  if (!zone) throw new Error('Zona no encontrada');
+
+  // Calcular precio base por día
+  const baseDailyPrice = plan.basePrice * zone.priceMultiplier;
+
+  // Calcular precio por viajero teniendo en cuenta rangos de edad
+  const travelersPrice = params.travelers.reduce((total, traveler) => {
+    // Encontrar el rango de edad aplicable
+    const ageRange = settings.ageRanges.find(
+      range => traveler.age >= range.min && traveler.age <= range.max
+    );
+
+    if (!ageRange) {
+      console.warn(`No se encontró rango de edad para ${traveler.age} años`);
+      return total + baseDailyPrice;
+    }
+
+    return total + (baseDailyPrice * ageRange.priceMultiplier);
+  }, 0);
+
+  // Calcular precio total
+  const subtotal = travelersPrice * params.duration;
+  const tax = subtotal * (settings.paymentSettings.taxRate / 100);
+  const commission = subtotal * (settings.paymentSettings.commissionRate / 100);
+  const total = subtotal + tax + commission;
+
+  return {
+    subtotal,
+    tax,
+    commission,
+    total,
+    pricePerDay: travelersPrice,
+    currency: settings.paymentSettings.currency
   };
+}

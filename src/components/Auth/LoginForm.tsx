@@ -7,8 +7,9 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { AuthenticationLoadingScreen } from '@/components/ui/loading-screen';
 
 interface LoginFormProps {
   className?: string;
@@ -16,7 +17,6 @@ interface LoginFormProps {
 
 export function LoginForm({ className }: LoginFormProps) {
   const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
   const [authForm, setAuthForm] = useState({
     email: '',
     password: '',
@@ -25,54 +25,35 @@ export function LoginForm({ className }: LoginFormProps) {
   
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { signIn, signUp, signInWithGoogle } = useAuth();
+  const { signIn, signUp, signInWithGoogle, isAuthenticating } = useAuth();
 
   const handleGoogleLogin = async () => {
-    setIsLoading(true);
     try {
       await signInWithGoogle();
-      toast({
-        title: "Inicio de sesión exitoso",
-        description: "¡Bienvenido a Viajero Light!",
-      });
       navigate('/');
     } catch (error: any) {
-      toast({
-        title: "Error al iniciar sesión con Google",
-        description: error.message,
-        variant: "destructive"
-      });
-    } finally {
-      setIsLoading(false);
+      // Error ya manejado por el contexto de autenticación
+      console.error('Error en inicio de sesión con Google:', error);
     }
   };
-
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setAuthForm(prev => ({ ...prev, [name]: value }));
   };
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
   
     try {
       await signIn(authForm.email, authForm.password);
-      toast({
-        title: "Inicio de sesión exitoso",
-        description: "¡Bienvenido de nuevo a Viajero Light!",
-      });
       navigate('/');
     } catch (error: any) {
-      toast({
-        title: "Error al iniciar sesión",
-        description: error.message,
-        variant: "destructive"
-      });
-    } finally {
-      setIsLoading(false);
+      // Error ya manejado por el contexto de autenticación
+      console.error('Error en inicio de sesión:', error);
     }
   };
+
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -84,33 +65,21 @@ export function LoginForm({ className }: LoginFormProps) {
       });
       return;
     }
-    
-    setIsLoading(true);
   
     try {
       await signUp(authForm.email, authForm.password);
-      toast({
-        title: "Registro exitoso",
-        description: "Tu cuenta ha sido creada. ¡Bienvenido a Viajero Light!",
-      });
       navigate('/');
     } catch (error: any) {
-      toast({
-        title: "Error al registrarse",
-        description: error.message,
-        variant: "destructive"
-      });
-    } finally {
-      setIsLoading(false);
+      // Error ya manejado por el contexto de autenticación
+      console.error('Error en registro:', error);
     }
   };
-  const handleSocialLogin = (provider: string) => {
-    // TODO: Implement social login with Supabase
-    toast({
-      title: "Próximamente",
-      description: `El inicio de sesión con ${provider} estará disponible pronto.`,
-    });
-  };
+
+  // Si está autenticando, mostrar pantalla de carga
+  if (isAuthenticating) {
+    return <AuthenticationLoadingScreen />;
+  }
+
   return (
     <div className={cn("backdrop-blur-md bg-white/80 dark:bg-gray-900/80 rounded-xl p-8 w-full max-w-md shadow-xl border border-white/20", className)}>
       <Tabs defaultValue="login" className="w-full">
@@ -128,7 +97,7 @@ export function LoginForm({ className }: LoginFormProps) {
             variant="outline" 
             className="w-full bg-white/90 dark:bg-gray-800/90 text-gray-800 dark:text-white border-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700/90 flex items-center justify-center gap-2 transition-colors"
             onClick={handleGoogleLogin}
-            disabled={isLoading}
+            disabled={isAuthenticating}
           >
             <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round">
               <path d="M17.788 5.108A9 9 0 1021.447 12h-8.5" />
@@ -196,16 +165,9 @@ export function LoginForm({ className }: LoginFormProps) {
             <Button 
               type="submit" 
               className="w-full bg-primary hover:bg-primary/90 text-white transition-colors"
-              disabled={isLoading}
+              disabled={isAuthenticating}
             >
-              {isLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Iniciando sesión...
-                </>
-              ) : (
-                "Iniciar sesión"
-              )}
+              Iniciar sesión
             </Button>
           </form>
         </TabsContent>
@@ -252,13 +214,13 @@ export function LoginForm({ className }: LoginFormProps) {
                 </button>
               </div>
             </div>
-            
+
             <div className="space-y-2">
-              <Label htmlFor="confirm-password" className="text-gray-700 dark:text-gray-300">Confirma Contraseña</Label>
+              <Label htmlFor="confirm-password-register" className="text-gray-700 dark:text-gray-300">Confirmar Contraseña</Label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
                 <Input 
-                  id="confirm-password"
+                  id="confirm-password-register"
                   name="confirmPassword"
                   type={showPassword ? "text" : "password"} 
                   placeholder="••••••••"
@@ -267,30 +229,23 @@ export function LoginForm({ className }: LoginFormProps) {
                   onChange={handleInputChange}
                   required
                 />
+                <button 
+                  type="button"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
               </div>
             </div>
             
             <Button 
               type="submit" 
               className="w-full bg-primary hover:bg-primary/90 text-white transition-colors"
-              disabled={isLoading}
+              disabled={isAuthenticating}
             >
-              {isLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Creando cuenta...
-                </>
-              ) : (
-                "Crear Cuenta"
-              )}
+              Registrarse
             </Button>
-            
-            <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
-              Al registrarse, acepta nuestros{" "}
-              <a href="#" className="text-primary hover:underline">Términos de servicio</a>
-              {" "}y{" "}
-              <a href="#" className="text-primary hover:underline">Política de privacidad</a>
-            </p>
           </form>
         </TabsContent>
       </Tabs>

@@ -148,7 +148,7 @@ export function HeroSection({ className }: HeroSectionProps) {
                     Viajeros
                   </label>
                   <TravelerSelector
-                    onTravelersChange={(ages) => setFormData(prev => ({...prev, travelers: ages}))}
+                    onTravelersChange={(travelers) => setFormData({ ...formData, travelers })}
                     className="w-full [&_button]:h-12"
                   />
                 </div>
