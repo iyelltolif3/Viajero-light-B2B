@@ -101,10 +101,10 @@ export function HeroSection({ className }: HeroSectionProps) {
         <div className="w-full max-w-[1200px] mx-auto px-4">
           <form onSubmit={handleSubmit}>
             {/* Main Form Card */}
-            <div className="bg-white/95 dark:bg-gray-900/95 rounded-[20px] shadow-xl p-6">
-              <div className="grid grid-cols-1 lg:grid-cols-[180px_220px_1fr_140px_80px] gap-4 lg:gap-6 items-start">
+            <div className="bg-white/95 dark:bg-gray-900/95 rounded-[20px] shadow-xl p-4 sm:p-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-[1fr_1fr_1.5fr_auto_auto] gap-4 items-end">
                 {/* Origin Country */}
-                <div>
+                <div className="w-full">
                   <label className="block text-sm font-semibold mb-1.5 text-gray-700 dark:text-gray-300">
                     País de origen
                   </label>
@@ -121,21 +121,24 @@ export function HeroSection({ className }: HeroSectionProps) {
                 </div>
 
                 {/* Destination Country */}
-                <div>
+                <div className="w-full">
                   <label className="block text-sm font-semibold mb-1.5 text-gray-700 dark:text-gray-300">
                     País de destino
                   </label>
                   <DestinationSelector
-                    label=""
+                    label="¿A dónde viajas?"
                     placeholder="¿A dónde viajas?"
-                    onSelect={(value) => setFormData({ ...formData, destination: value })}
+                    onSelect={(value) => {
+                      console.log('Destino seleccionado:', value);
+                      setFormData(prev => ({ ...prev, destination: value }));
+                    }}
                     value={formData.destination}
-                    className="w-full [&_button]:h-12 [&_button]:pl-10"
+                    className="w-full [&_button]:h-12"
                   />
                 </div>
 
                 {/* Dates */}
-                <div>
+                <div className="w-full">
                   <DateSelector
                     onDatesChange={(dates) => setFormData({ ...formData, dates })}
                     className="w-full [&_button]:h-12"
@@ -143,7 +146,7 @@ export function HeroSection({ className }: HeroSectionProps) {
                 </div>
 
                 {/* Travelers */}
-                <div>
+                <div className="w-full">
                   <label className="block text-sm font-semibold mb-1.5 text-gray-700 dark:text-gray-300">
                     Viajeros
                   </label>
@@ -154,7 +157,7 @@ export function HeroSection({ className }: HeroSectionProps) {
                 </div>
 
                 {/* Submit Button */}
-                <div className="self-end">
+                <div className="w-full lg:w-auto">
                   <Button
                     type="submit"
                     className="w-full bg-travel-600/90 hover:bg-travel-700 text-white font-medium h-12 rounded-lg transition-all duration-200 ease-in-out transform hover:scale-[1.02] text-sm"

@@ -1,9 +1,8 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import { Calendar, CalendarIcon } from 'lucide-react';
 import { format, addDays, isBefore, isAfter, isSameDay } from 'date-fns';
 import { cn } from '@/lib/utils';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 
@@ -12,7 +11,7 @@ interface DateSelectorProps {
   onDatesChange?: (dates: { departureDate: Date | undefined; returnDate: Date | undefined }) => void;
 }
 
-export function DateSelector({ className, onDatesChange }: DateSelectorProps) {
+const DateSelector = ({ className, onDatesChange }: DateSelectorProps) => {
   const [open, setOpen] = useState(false);
   const [dates, setDates] = useState<{
     departureDate: Date | undefined;
@@ -29,7 +28,7 @@ export function DateSelector({ className, onDatesChange }: DateSelectorProps) {
   const minReturnDate = dates.departureDate ? addDays(dates.departureDate, 1) : today;
 
   // Function to handle date selection
-  const handleSelect = (date: Date | undefined) => {
+  const handleSelect = useCallback((date: Date | undefined) => {
     if (activeCalendar === 'departure') {
       // If selecting departure date
       if (date) {
@@ -38,28 +37,34 @@ export function DateSelector({ className, onDatesChange }: DateSelectorProps) {
           ? undefined 
           : dates.returnDate;
           
-        setDates({ departureDate: date, returnDate: newReturnDate });
+        const newDates = { departureDate: date, returnDate: newReturnDate };
+        setDates(newDates);
+        onDatesChange?.(newDates);
         
         // If no return date set, automatically switch to return selection
         if (!newReturnDate) {
           setActiveCalendar('return');
         }
       } else {
-        setDates({ ...dates, departureDate: undefined });
+        const newDates = { ...dates, departureDate: undefined };
+        setDates(newDates);
+        onDatesChange?.(newDates);
       }
     } else {
       // If selecting return date
-      setDates({ ...dates, returnDate: date });
+      const newDates = { ...dates, returnDate: date };
+      setDates(newDates);
+      onDatesChange?.(newDates);
       
       // If both dates are set, close the popover
       if (dates.departureDate && date) {
         setTimeout(() => setOpen(false), 300);
       }
     }
-  };
+  }, [activeCalendar, dates, onDatesChange]);
 
   // Function to get day class names for styling
-  const getDayClassName = (date: Date) => {
+  const getDayClassName = useCallback((date: Date) => {
     const isSelected = 
       (dates.departureDate && isSameDay(date, dates.departureDate)) || 
       (dates.returnDate && isSameDay(date, dates.returnDate));
@@ -72,12 +77,7 @@ export function DateSelector({ className, onDatesChange }: DateSelectorProps) {
     if (isSelected) return "bg-primary text-primary-foreground";
     if (isInRange) return "bg-primary/10 text-foreground";
     return "";
-  };
-
-  // Notify parent component when dates change
-  useEffect(() => {
-    onDatesChange && onDatesChange(dates);
-  }, [dates, onDatesChange]);
+  }, [dates]);
 
   return (
     <div className={cn("space-y-1.5", className)}>
@@ -86,8 +86,8 @@ export function DateSelector({ className, onDatesChange }: DateSelectorProps) {
           <label htmlFor="departure-date" className="text-sm font-medium text-foreground block mb-1.5">
             Fecha de salida
           </label>
-          <Popover open={open} onOpenChange={setOpen}>
-            <PopoverTrigger asChild>
+          <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
               <Button
                 id="departure-date"
                 variant="outline"
@@ -100,14 +100,14 @@ export function DateSelector({ className, onDatesChange }: DateSelectorProps) {
                 <CalendarIcon className="mr-2 h-4 w-4" />
                 {dates.departureDate ? format(dates.departureDate, "MMMM d, yyyy") : "Selecciona fecha de salida"}
               </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0 bg-card" align="start">
-              <div className="flex flex-col sm:flex-row">
-                <div className="p-3">
-                  <div className="flex justify-between pb-4">
+            </DialogTrigger>
+            <DialogContent className="w-[90vw] max-w-[450px] p-4 bg-card">
+              <div className="flex flex-col">
+                <div className="pb-4">
+                  <div className="flex justify-between gap-2">
                     <button 
                       className={cn(
-                        "text-sm font-medium px-2 py-1 rounded-md transition-colors", 
+                        "flex-1 text-sm font-medium px-2 py-1.5 rounded-md transition-colors", 
                         activeCalendar === 'departure' 
                           ? "bg-primary text-primary-foreground" 
                           : "text-foreground hover:bg-muted"
@@ -118,7 +118,7 @@ export function DateSelector({ className, onDatesChange }: DateSelectorProps) {
                     </button>
                     <button 
                       className={cn(
-                        "text-sm font-medium px-2 py-1 rounded-md transition-colors", 
+                        "flex-1 text-sm font-medium px-2 py-1.5 rounded-md transition-colors", 
                         activeCalendar === 'return' 
                           ? "bg-primary text-primary-foreground" 
                           : "text-foreground hover:bg-muted"
@@ -128,43 +128,43 @@ export function DateSelector({ className, onDatesChange }: DateSelectorProps) {
                       Regreso
                     </button>
                   </div>
-                  <CalendarComponent
-                    mode="single"
-                    selected={activeCalendar === 'departure' ? dates.departureDate : dates.returnDate}
-                    onSelect={handleSelect}
-                    initialFocus
-                    disabled={(date) => {
-                      // For departure: disable dates before today
-                      if (activeCalendar === 'departure') {
-                        return isBefore(date, today) && !isSameDay(date, today);
-                      }
-                      // For return: disable dates before departure date + 1 day
-                      return !dates.departureDate || 
-                        isBefore(date, minReturnDate) && 
-                        !isSameDay(date, minReturnDate);
-                    }}
-                    modifiersClassNames={{
-                      selected: "bg-primary text-primary-foreground",
-                    }}
-                    modifiersStyles={{
-                      selected: { fontWeight: "bold" }
-                    }}
-                    className="rounded-md border"
-                    classNames={{
-                      day: getDayClassName as unknown as string,
-                    }}
-                  />
-                  {dates.departureDate && dates.returnDate && (
-                    <div className="pt-4 text-sm text-muted-foreground">
-                      <p>
-                        {`${format(dates.departureDate, "MMM d")} - ${format(dates.returnDate, "MMM d, yyyy")}`}
-                      </p>
-                    </div>
-                  )}
                 </div>
+                <CalendarComponent
+                  mode="single"
+                  selected={activeCalendar === 'departure' ? dates.departureDate : dates.returnDate}
+                  onSelect={handleSelect}
+                  initialFocus
+                  disabled={(date) => {
+                    // For departure: disable dates before today
+                    if (activeCalendar === 'departure') {
+                      return isBefore(date, today) && !isSameDay(date, today);
+                    }
+                    // For return: disable dates before departure date + 1 day
+                    return !dates.departureDate || 
+                      isBefore(date, minReturnDate) && 
+                      !isSameDay(date, minReturnDate);
+                  }}
+                  modifiersClassNames={{
+                    selected: "bg-primary text-primary-foreground",
+                  }}
+                  modifiersStyles={{
+                    selected: { fontWeight: "bold" }
+                  }}
+                  className="rounded-md border"
+                  classNames={{
+                    day: getDayClassName as unknown as string,
+                  }}
+                />
+                {dates.departureDate && dates.returnDate && (
+                  <div className="pt-4 text-sm text-muted-foreground">
+                    <p>
+                      {`${format(dates.departureDate, "MMM d")} - ${format(dates.returnDate, "MMM d, yyyy")}`}
+                    </p>
+                  </div>
+                )}
               </div>
-            </PopoverContent>
-          </Popover>
+            </DialogContent>
+          </Dialog>
         </div>
 
         <div className="flex-1">
@@ -191,6 +191,6 @@ export function DateSelector({ className, onDatesChange }: DateSelectorProps) {
       </div>
     </div>
   );
-}
+};
 
 export default DateSelector;

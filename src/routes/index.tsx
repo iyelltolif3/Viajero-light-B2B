@@ -2,7 +2,10 @@ import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 
-// Páginas existentes - usando los nombres correctos
+// Layouts
+import { AdminLayout } from '@/layouts/AdminLayout';
+
+// Pages
 import Login from '@/pages/Login';
 import NotFound from '@/pages/NotFound';
 import Index from '@/pages/Index';
@@ -10,31 +13,20 @@ import Profile from '@/pages/Profile';
 import Vouchers from '@/pages/Vouchers';
 import Planes from '@/pages/Planes';
 import Checkout from '@/pages/Checkout';
-import AdminSettings from '@/pages/admin/Settings';
-import Assistances from '@/pages/admin/Assistances';
+import { Dashboard, Settings, Users, Assistances, ContentSettings } from '@/pages/admin';
 import CheckoutRedesigned from '@/pages/checkout-redesigned';
 
 // Protección de rutas
-function AdminRoute({ children }: { children: React.ReactNode }) {
-  const { user } = useAuth();
-  const isAdmin = user?.user_metadata?.role === 'admin';
-  
-  if (!user) {
-    return <Navigate to="/login" />;
-  }
-  
-  if (!isAdmin) {
-    return <Navigate to="/" />;
-  }
-  
-  return <>{children}</>;
-}
-
 function PrivateRoute({ children }: { children: React.ReactNode }) {
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   
   if (!user) {
     return <Navigate to="/login" />;
+  }
+
+  // Prevent admin users from accessing client routes
+  if (isAdmin) {
+    return <Navigate to="/admin" replace />;
   }
   
   return <>{children}</>;
@@ -65,10 +57,16 @@ export default function AppRoutes() {
         <Route path="/login" element={<Login />} />
         
         {/* Rutas de checkout */}
-        <Route path="/checkout" element={<Checkout />} />
-        <Route path="/checkout-new" element={<CheckoutRedesigned />} />
+        <Route 
+          path="/checkout" 
+          element={<PrivateRoute><Checkout /></PrivateRoute>} 
+        />
+        <Route 
+          path="/checkout-new" 
+          element={<PrivateRoute><CheckoutRedesigned /></PrivateRoute>} 
+        />
         
-        {/* Rutas privadas */}
+        {/* Rutas privadas de cliente */}
         <Route 
           path="/my-account/profile" 
           element={<PrivateRoute><Profile /></PrivateRoute>} 
@@ -79,18 +77,17 @@ export default function AppRoutes() {
         />
         
         {/* Rutas de administrador */}
-        <Route 
-          path="/admin/settings" 
-          element={<AdminRoute><AdminSettings /></AdminRoute>} 
-        />
-        <Route 
-          path="/admin/assistances" 
-          element={<AdminRoute><Assistances /></AdminRoute>} 
-        />
+        <Route path="/admin" element={<AdminLayout />}>
+          <Route index element={<Dashboard />} />
+          <Route path="settings" element={<Settings />} />
+          <Route path="users" element={<Users />} />
+          <Route path="assistances" element={<Assistances />} />
+          <Route path="content" element={<ContentSettings />} />
+        </Route>
         
         {/* Página 404 */}
         <Route path="*" element={<NotFound />} />
       </Routes>
     </React.Suspense>
   );
-} 
+}

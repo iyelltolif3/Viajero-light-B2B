@@ -18,6 +18,10 @@ export interface QuoteFormData {
     returnDate?: Date;
   };
   travelers: { age: number }[];
+  contactInfo?: {
+    phone: string;
+    email: string;
+  };
 }
 
 export interface QuoteCalculationParams {
@@ -74,7 +78,7 @@ export interface Voucher {
 export interface Assistance {
   id: string;
   planName: string;
-  status: 'active' | 'expired' | 'future';
+  status: 'active' | 'future' | 'expired';
   startDate: string;
   endDate: string;
   travelers: {
@@ -83,6 +87,10 @@ export interface Assistance {
     passport: string;
     nationality: string;
   }[];
+  contactInfo: {
+    phone: string;
+    email: string;
+  };
   totalPrice: number;
   planDetails: {
     coverageDetails: {
@@ -141,4 +149,4 @@ export interface Settings {
     contactEmail: string;
     supportPhone: string;
   };
-} 
+}

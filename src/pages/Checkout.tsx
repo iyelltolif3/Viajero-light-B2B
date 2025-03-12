@@ -54,6 +54,10 @@ interface CheckoutFormData {
   travelers: {
     age: number;
   }[];
+  contactInfo: {
+    phone: string;
+    email: string;
+  };
 }
 
 interface QuoteResult {
@@ -78,7 +82,11 @@ export default function Checkout() {
       departureDate: null,
       returnDate: null
     },
-    travelers: []
+    travelers: [],
+    contactInfo: {
+      phone: "+56",
+      email: user?.email || ""
+    }
   });
 
   const [quoteData, setQuoteData] = useState<QuoteFormData>({
@@ -88,7 +96,11 @@ export default function Checkout() {
       departureDate: undefined,
       returnDate: undefined,
     },
-    travelers: [{ age: 18 }]
+    travelers: [{ age: 18 }],
+    contactInfo: {
+      phone: "+56",
+      email: user?.email || ""
+    }
   });
 
   const [totalPrice, setTotalPrice] = useState(selectedPlan?.price || 0);
@@ -103,6 +115,10 @@ export default function Checkout() {
           returnDate: quotationData.endDate ? new Date(quotationData.endDate) : null
         },
         travelers: quotationData.travelers.map(t => ({ age: parseInt(t.age) })),
+        contactInfo: {
+          phone: "+56",
+          email: user?.email || ""
+        }
       });
 
       // Inicializar quoteData con los datos de la cotización
@@ -113,7 +129,11 @@ export default function Checkout() {
           departureDate: quotationData.startDate ? new Date(quotationData.startDate) : undefined,
           returnDate: quotationData.endDate ? new Date(quotationData.endDate) : undefined,
         },
-        travelers: quotationData.travelers.map(t => ({ age: parseInt(t.age) }))
+        travelers: quotationData.travelers.map(t => ({ age: parseInt(t.age) })),
+        contactInfo: {
+          phone: "+56",
+          email: user?.email || ""
+        }
       });
     }
   }, [quotationData]);
@@ -161,6 +181,45 @@ export default function Checkout() {
     );
   }
 
+  const handleContactChange = (field: keyof CheckoutFormData['contactInfo'], value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      contactInfo: {
+        ...prev.contactInfo,
+        [field]: value
+      }
+    }));
+
+    setQuoteData(prev => ({
+      ...prev,
+      contactInfo: {
+        ...prev.contactInfo!,
+        [field]: value
+      }
+    }));
+  };
+
+  const validateContactInfo = () => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const phoneRegex = /^\+56\d{9}$/;
+
+    if (!emailRegex.test(formData.contactInfo.email)) {
+      toast.error('Email inválido', {
+        description: 'Por favor ingrese un email válido'
+      });
+      return false;
+    }
+
+    if (!phoneRegex.test(formData.contactInfo.phone)) {
+      toast.error('Teléfono inválido', {
+        description: 'Por favor ingrese un número válido con formato +56XXXXXXXXX'
+      });
+      return false;
+    }
+
+    return true;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -168,6 +227,10 @@ export default function Checkout() {
       toast.warning('Campos incompletos', {
         description: 'Por favor complete todos los campos requeridos'
       });
+      return;
+    }
+
+    if (!validateContactInfo()) {
       return;
     }
 
@@ -183,6 +246,7 @@ export default function Checkout() {
           passport: '',
           nationality: ''
         })),
+        contactInfo: formData.contactInfo,
         totalPrice: quote.total,
         planDetails: {
           coverageDetails: selectedPlan.coverageDetails,
@@ -344,6 +408,42 @@ export default function Checkout() {
                   ))}
                 </div>
 
+                {/* Contact Information Section */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Información de Contacto</CardTitle>
+                    <CardDescription>
+                      Esta información será utilizada para todos los viajeros
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="phone">Teléfono de Contacto</Label>
+                      <Input
+                        id="phone"
+                        value={formData.contactInfo.phone}
+                        onChange={(e) => handleContactChange('phone', e.target.value)}
+                        placeholder="+56912345678"
+                        className="max-w-sm"
+                      />
+                      <p className="text-sm text-muted-foreground">
+                        Ingrese un número de teléfono chileno válido
+                      </p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="email">Correo Electrónico</Label>
+                      <Input
+                        id="email"
+                        type="email"
+                        value={formData.contactInfo.email}
+                        onChange={(e) => handleContactChange('email', e.target.value)}
+                        placeholder="ejemplo@correo.com"
+                        className="max-w-sm"
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+
                 <Button type="submit" className="w-full">
                   Proceder al Pago
                 </Button>
@@ -431,4 +531,4 @@ export default function Checkout() {
       </div>
     </div>
   );
-} 
+}

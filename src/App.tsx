@@ -12,6 +12,7 @@ import { usePlansStore } from '@/store/plansStore';
 import { useEffect, useState } from 'react';
 import { PageLoadingScreen } from '@/components/ui/loading-screen';
 import { useAuth } from '@/contexts/AuthContext';
+import { useLocation } from 'react-router-dom';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -26,7 +27,8 @@ function AppContent() {
   const [isReady, setIsReady] = useState(false);
   const { settings } = useSettingsStore();
   const { plans } = usePlansStore();
-  const { user, loading: authLoading } = useAuth();
+  const { user, isAdmin } = useAuth();
+  const location = useLocation();
 
   useEffect(() => {
     // Simular una pequeña carga para mostrar la pantalla de carga
@@ -46,9 +48,12 @@ function AppContent() {
     );
   }
 
+  const isAdminRoute = location.pathname.startsWith('/admin');
+
   return (
     <div className="min-h-screen flex flex-col">
-      <Navbar />
+      {/* Solo mostrar el Navbar principal si no es una ruta de admin y el usuario no es admin */}
+      {!isAdminRoute && !isAdmin && <Navbar />}
       <main className="flex-1">
         <AppRoutes />
       </main>

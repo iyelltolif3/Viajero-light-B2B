@@ -1,16 +1,12 @@
-
 import React from 'react';
 import { Clock, CalendarDays, Percent } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import Carousel from './ui/carousel-custom';
+import { useSettingsStore } from '@/store/settingsStore';
+import type { DiscountItem } from '@/types/content';
 
-interface DiscountCardProps {
-  title: string;
-  description: string;
-  discount: string;
-  expiryDate: string;
-  imageSrc: string;
+interface DiscountCardProps extends DiscountItem {
   className?: string;
 }
 
@@ -59,41 +55,17 @@ interface DiscountSectionProps {
 }
 
 export function DiscountSection({ className }: DiscountSectionProps) {
-  // Sample discount data
-  const discounts = [
-    {
-      title: "Summer Getaway",
-      description: "Book now for special summer rates on tropical destinations.",
-      discount: "25%",
-      expiryDate: "August 31, 2023",
-      imageSrc: "https://images.unsplash.com/photo-1465146344425-f00d5f5c8f07?auto=format&fit=crop&q=80",
-    },
-    {
-      title: "Family Package",
-      description: "Special rates for families traveling with children under 12.",
-      discount: "15%",
-      expiryDate: "December 31, 2023",
-      imageSrc: "https://images.unsplash.com/photo-1509316975850-ff9c5deb0cd9?auto=format&fit=crop&q=80",
-    },
-    {
-      title: "Last Minute Deals",
-      description: "Incredible savings on bookings made within 72 hours of departure.",
-      discount: "40%",
-      expiryDate: "Limited Availability",
-      imageSrc: "https://images.unsplash.com/photo-1472396961693-142e6e269027?auto=format&fit=crop&q=80",
-    },
-    {
-      title: "Weekend Escape",
-      description: "Perfect short breaks for busy professionals.",
-      discount: "20%",
-      expiryDate: "Ongoing",
-      imageSrc: "https://images.unsplash.com/photo-1472396961693-142e6e269027?auto=format&fit=crop&q=80",
-    },
-  ];
+  const { content } = useSettingsStore();
+  const { sectionTitle, sectionSubtitle, badgeText, viewAllButtonText, discounts } = content.discountSection;
+
+  // Filter active discounts and sort by order
+  const activeDiscounts = discounts
+    .filter(discount => discount.active)
+    .sort((a, b) => a.order - b.order);
 
   // Mobile carousel items
-  const mobileCarouselItems = discounts.map((discount, index) => (
-    <div key={index} className="h-full w-full px-1">
+  const mobileCarouselItems = activeDiscounts.map((discount, index) => (
+    <div key={discount.id} className="h-full w-full px-1">
       <DiscountCard {...discount} className="h-full" />
     </div>
   ));
@@ -104,18 +76,18 @@ export function DiscountSection({ className }: DiscountSectionProps) {
         <div className="text-center mb-10">
           <div className="inline-flex items-center rounded-full bg-primary/10 px-3 py-1 text-sm font-medium text-primary mb-3">
             <Percent className="mr-2 h-4 w-4" />
-            Ofertas por tiempo limitado
+            {badgeText}
           </div>
-          <h2 className="text-3xl md:text-4xl font-bold text-gray-700 mb-4">Descuentos exclusivos</h2>
-          <p className=" text-gray-700 max-w-2xl mx-auto">
-            Aprovecha nuestras promociones especiales y ahorre en su próxima aventura.
+          <h2 className="text-3xl md:text-4xl font-bold text-gray-700 mb-4">{sectionTitle}</h2>
+          <p className="text-gray-700 max-w-2xl mx-auto">
+            {sectionSubtitle}
           </p>
         </div>
 
         {/* Desktop - Grid Layout */}
         <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {discounts.slice(0, 3).map((discount, index) => (
-            <DiscountCard key={index} {...discount} className="h-full" />
+          {activeDiscounts.slice(0, 3).map((discount) => (
+            <DiscountCard key={discount.id} {...discount} className="h-full" />
           ))}
         </div>
 
@@ -136,7 +108,7 @@ export function DiscountSection({ className }: DiscountSectionProps) {
         <div className="text-center mt-10">
           <Button variant="outline" className="border-travel-300 text-travel-800 hover:bg-travel-100">
             <CalendarDays className="mr-2 h-4 w-4" />
-            Ver todas las ofertas
+            {viewAllButtonText}
           </Button>
         </div>
       </div>
