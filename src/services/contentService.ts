@@ -1,131 +1,192 @@
 import { supabase } from '@/lib/supabase';
-import type { Database } from '@/types/database';
-import type { ContentSettings, DiscountContent, DiscountItem } from '@/types/content';
+import type { 
+  ContentSettings,
+  DiscountSection,
+  DiscountItem
+} from '@/types';
 
-type ContentSection = Database['public']['Tables']['content_sections']['Row'];
-type DiscountItemDB = Database['public']['Tables']['discount_items']['Row'];
+export class ContentService {
+  static async getContent(): Promise<ContentSettings | null> {
+    const { data, error } = await supabase
+      .from('system_content')
+      .select('*')
+      .single();
 
-export async function getDiscountSection(): Promise<DiscountContent> {
-  // Get section data
-  const { data: sectionData, error: sectionError } = await supabase
-    .from('content_sections')
-    .select('*')
-    .eq('type', 'discount')
-    .single();
-
-  if (sectionError) throw sectionError;
-
-  // Get discount items
-  const { data: itemsData, error: itemsError } = await supabase
-    .from('discount_items')
-    .select('*')
-    .eq('section_id', sectionData.id)
-    .order('order');
-
-  if (itemsError) throw itemsError;
-
-  return {
-    sectionTitle: sectionData.title,
-    sectionSubtitle: sectionData.subtitle || '',
-    badgeText: sectionData.badge_text || '',
-    viewAllButtonText: sectionData.button_text || '',
-    discounts: itemsData.map(mapDiscountItemFromDB),
-  };
-}
-
-export async function updateDiscountSection(content: DiscountContent): Promise<void> {
-  // First, get the section ID
-  const { data: section, error: sectionError } = await supabase
-    .from('content_sections')
-    .select('id')
-    .eq('type', 'discount')
-    .single();
-
-  if (sectionError) throw sectionError;
-
-  // Update section data
-  const { error: updateError } = await supabase
-    .from('content_sections')
-    .update({
-      title: content.sectionTitle,
-      subtitle: content.sectionSubtitle,
-      badge_text: content.badgeText,
-      button_text: content.viewAllButtonText,
-      updated_at: new Date().toISOString(),
-    })
-    .eq('id', section.id);
-
-  if (updateError) throw updateError;
-
-  // Get existing items to compare
-  const { data: existingItems, error: itemsError } = await supabase
-    .from('discount_items')
-    .select('id')
-    .eq('section_id', section.id);
-
-  if (itemsError) throw itemsError;
-
-  const existingIds = new Set(existingItems.map(item => item.id));
-  const newIds = new Set(content.discounts.map(item => item.id));
-
-  // Items to delete
-  const idsToDelete = [...existingIds].filter(id => !newIds.has(id));
-  if (idsToDelete.length > 0) {
-    const { error: deleteError } = await supabase
-      .from('discount_items')
-      .delete()
-      .in('id', idsToDelete);
-
-    if (deleteError) throw deleteError;
+    if (error) throw error;
+    return data;
   }
 
-  // Update or insert items
-  for (const item of content.discounts) {
-    const dbItem = mapDiscountItemToDB(item, section.id);
-    
-    if (existingIds.has(item.id)) {
-      // Update existing item
-      const { error: updateItemError } = await supabase
-        .from('discount_items')
-        .update(dbItem)
-        .eq('id', item.id);
+  static async getDiscountSection(): Promise<DiscountSection> {
+    const { data: content, error } = await supabase
+      .from('system_content')
+      .select('discountSection')
+      .single();
 
-      if (updateItemError) throw updateItemError;
-    } else {
-      // Insert new item
-      const { error: insertError } = await supabase
-        .from('discount_items')
-        .insert(dbItem);
-
-      if (insertError) throw insertError;
-    }
+    if (error) throw error;
+    return content.discountSection;
   }
-}
 
-function mapDiscountItemFromDB(dbItem: DiscountItemDB): DiscountItem {
-  return {
-    id: dbItem.id,
-    title: dbItem.title,
-    description: dbItem.description,
-    discount: dbItem.discount,
-    expiryDate: dbItem.expiry_date,
-    imageSrc: dbItem.image_url,
-    active: dbItem.active,
-    order: dbItem.order,
-  };
-}
+  static async updateDiscountSection(discountSection: DiscountSection): Promise<void> {
+    const { error } = await supabase
+      .from('system_content')
+      .update({ discountSection })
+      .eq('id', 1); // Asumiendo que siempre hay un registro con id=1
 
-function mapDiscountItemToDB(item: DiscountItem, sectionId: string): Omit<DiscountItemDB, 'created_at'> {
-  return {
-    id: item.id,
-    section_id: sectionId,
-    title: item.title,
-    description: item.description,
-    discount: item.discount,
-    expiry_date: item.expiryDate,
-    image_url: item.imageSrc,
-    active: item.active,
-    order: item.order,
-    updated_at: new Date().toISOString(),
-  };
+    if (error) throw error;
+  }
+
+  static async getActiveDiscounts(): Promise<DiscountItem[]> {
+    const { data: content, error } = await supabase
+      .from('system_content')
+      .select('discountSection')
+      .single();
+
+    if (error) throw error;
+
+    return content.discountSection.discounts.filter(
+      discount => discount.active && new Date(discount.validUntil) > new Date()
+    ).sort((a, b) => a.order - b.order);
+  }
+
+  static async createDiscount(discount: Omit<DiscountItem, 'id' | 'active' | 'order'>): Promise<void> {
+    const { data: content, error: getError } = await supabase
+      .from('system_content')
+      .select('discountSection')
+      .single();
+
+    if (getError) throw getError;
+
+    const newDiscount: DiscountItem = {
+      id: Date.now().toString(),
+      ...discount,
+      active: true,
+      order: content.discountSection.discounts.length
+    };
+
+    const updatedDiscounts = [...content.discountSection.discounts, newDiscount];
+    const updatedSection = {
+      ...content.discountSection,
+      discounts: updatedDiscounts
+    };
+
+    const { error: updateError } = await supabase
+      .from('system_content')
+      .update({
+        discountSection: updatedSection
+      })
+      .eq('id', 1);
+
+    if (updateError) throw updateError;
+  }
+
+  static async updateDiscount(id: string, updates: Partial<Omit<DiscountItem, 'id' | 'active' | 'order'>>): Promise<void> {
+    const { data: content, error: getError } = await supabase
+      .from('system_content')
+      .select('discountSection')
+      .single();
+
+    if (getError) throw getError;
+
+    const updatedDiscounts = content.discountSection.discounts.map(discount =>
+      discount.id === id ? { 
+        ...discount,
+        ...updates,
+        id: discount.id,
+        active: discount.active,
+        order: discount.order
+      } : discount
+    );
+
+    const updatedSection = {
+      ...content.discountSection,
+      discounts: updatedDiscounts
+    };
+
+    const { error: updateError } = await supabase
+      .from('system_content')
+      .update({
+        discountSection: updatedSection
+      })
+      .eq('id', 1);
+
+    if (updateError) throw updateError;
+  }
+
+  static async deleteDiscount(id: string): Promise<void> {
+    const { data: content, error: getError } = await supabase
+      .from('system_content')
+      .select('discountSection')
+      .single();
+
+    if (getError) throw getError;
+
+    const updatedDiscounts = content.discountSection.discounts
+      .filter(discount => discount.id !== id)
+      .map((discount, index) => ({ ...discount, order: index }));
+
+    const updatedSection = {
+      ...content.discountSection,
+      discounts: updatedDiscounts
+    };
+
+    const { error: updateError } = await supabase
+      .from('system_content')
+      .update({
+        discountSection: updatedSection
+      })
+      .eq('id', 1);
+
+    if (updateError) throw updateError;
+  }
+
+  static async reorderDiscounts(orderedIds: string[]): Promise<void> {
+    const { data: content, error: getError } = await supabase
+      .from('system_content')
+      .select('discountSection')
+      .single();
+
+    if (getError) throw getError;
+
+    const discountMap = new Map<string, DiscountItem>(
+      content.discountSection.discounts.map(discount => [discount.id, discount])
+    );
+
+    const updatedDiscounts = orderedIds
+      .map((id, index) => {
+        const discount = discountMap.get(id);
+        if (!discount) return null;
+        
+        const updatedDiscount: DiscountItem = {
+          id: discount.id,
+          title: discount.title,
+          description: discount.description,
+          code: discount.code,
+          discountPercentage: discount.discountPercentage,
+          validUntil: discount.validUntil,
+          active: discount.active,
+          order: index
+        };
+
+        if (discount.imageSrc) {
+          updatedDiscount.imageSrc = discount.imageSrc;
+        }
+
+        return updatedDiscount;
+      })
+      .filter((discount): discount is DiscountItem => discount !== null);
+
+    const updatedSection = {
+      ...content.discountSection,
+      discounts: updatedDiscounts
+    };
+
+    const { error: updateError } = await supabase
+      .from('system_content')
+      .update({
+        discountSection: updatedSection
+      })
+      .eq('id', 1);
+
+    if (updateError) throw updateError;
+  }
 }

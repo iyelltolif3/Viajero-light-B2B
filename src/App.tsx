@@ -6,13 +6,14 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider } from '@/components/theme-provider';
 import { Navbar } from '@/components/Navbar';
+import { Footer } from '@/components/Footer';
 import AppRoutes from '@/routes';
 import { useSettingsStore } from '@/store/settingsStore';
 import { usePlansStore } from '@/store/plansStore';
-import { useEffect, useState } from 'react';
-import { PageLoadingScreen } from '@/components/ui/loading-screen';
+import { useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLocation } from 'react-router-dom';
+import { AdminLayout } from '@/components/layouts/AdminLayout';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -24,39 +25,46 @@ const queryClient = new QueryClient({
 });
 
 function AppContent() {
-  const [isReady, setIsReady] = useState(false);
-  const { settings } = useSettingsStore();
-  const { plans } = usePlansStore();
+  const { fetchSettings } = useSettingsStore();
+  const { fetchPlans } = usePlansStore();
   const { user, isAdmin } = useAuth();
   const location = useLocation();
 
   useEffect(() => {
-    // Simular una pequeña carga para mostrar la pantalla de carga
-    // y verificar que los stores estén inicializados correctamente
-    const timer = setTimeout(() => {
-      if (settings && plans) {
-        setIsReady(true);
+    // Cargar los datos iniciales
+    const loadInitialData = async () => {
+      try {
+        await Promise.all([
+          fetchSettings(),
+          fetchPlans()
+        ]);
+      } catch (error) {
+        console.error('Error loading initial data:', error);
       }
-    }, 800); // Pequeño retraso para que la pantalla de carga sea visible
-    
-    return () => clearTimeout(timer);
-  }, [settings, plans]);
+    };
 
-  if (!isReady) {
-    return (
-      <PageLoadingScreen message="Inicializando aplicación..." />
-    );
-  }
+    loadInitialData();
+  }, [fetchSettings, fetchPlans]);
 
   const isAdminRoute = location.pathname.startsWith('/admin');
 
+  // Si es una ruta de admin y el usuario es admin, usar AdminLayout
+  if (isAdminRoute && isAdmin) {
+    return (
+      <AdminLayout>
+        <AppRoutes />
+      </AdminLayout>
+    );
+  }
+
+  // Para rutas de cliente
   return (
     <div className="min-h-screen flex flex-col">
-      {/* Solo mostrar el Navbar principal si no es una ruta de admin y el usuario no es admin */}
-      {!isAdminRoute && !isAdmin && <Navbar />}
+      <Navbar />
       <main className="flex-1">
         <AppRoutes />
       </main>
+      <Footer />
     </div>
   );
 }

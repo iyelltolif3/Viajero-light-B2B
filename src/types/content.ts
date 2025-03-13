@@ -1,4 +1,18 @@
-export interface DiscountContent {
+import { BaseModel } from './settings';
+
+export interface DiscountItem {
+  id: string;
+  title: string;
+  description: string;
+  code: string;
+  discountPercentage: number;
+  validUntil: string;
+  imageSrc?: string;
+  active: boolean;
+  order: number;
+}
+
+export interface DiscountSection {
   sectionTitle: string;
   sectionSubtitle: string;
   badgeText: string;
@@ -6,17 +20,33 @@ export interface DiscountContent {
   discounts: DiscountItem[];
 }
 
-export interface DiscountItem {
-  id: string;
-  title: string;
-  description: string;
-  discount: string;
-  expiryDate: string;
-  imageSrc: string;
-  active: boolean;
-  order: number;
-}
-
-export interface ContentSettings {
-  discountSection: DiscountContent;
+export interface ContentSettings extends BaseModel {
+  discountSection: DiscountSection;
+  heroSection?: {
+    title: string;
+    subtitle: string;
+    ctaText: string;
+    backgroundImage: string;
+  };
+  featuresSection?: {
+    title: string;
+    subtitle: string;
+    features: Array<{
+      id: string;
+      title: string;
+      description: string;
+      icon: string;
+    }>;
+  };
+  testimonialSection?: {
+    title: string;
+    subtitle: string;
+    testimonials: Array<{
+      id: string;
+      author: string;
+      content: string;
+      rating: number;
+      avatar?: string;
+    }>;
+  };
 }

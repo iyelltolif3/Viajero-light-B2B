@@ -109,44 +109,11 @@ export interface Assistance {
   };
 }
 
-export interface Settings {
-  zones: {
-    id: string;
-    name: string;
-    priceMultiplier: number;
-    countries: string[];
-    riskLevel: 'low' | 'medium' | 'high';
-  }[];
-  ageRanges: {
-    min: number;
-    max: number;
-    priceMultiplier: number;
-  }[];
-  emergencyContacts: {
-    id: string;
-    country: string;
-    phone: string;
-    email: string;
-    address: string;
-  }[];
-  notifications: {
-    beforeExpiration: number[];
-    reminderEmails: boolean;
-    smsNotifications: boolean;
-    whatsappNotifications: boolean;
-  };
-  paymentSettings: {
-    currency: string;
-    acceptedMethods: string[];
-    taxRate: number;
-    commissionRate: number;
-  };
-  branding: {
-    primaryColor: string;
-    secondaryColor: string;
-    logo: string;
-    companyName: string;
-    contactEmail: string;
-    supportPhone: string;
-  };
-}
+// Re-export all types from settings
+export * from './settings';
+// Re-export all types from content
+export { 
+  type ContentSettings,
+  type DiscountSection,
+  type DiscountItem
+} from './content';

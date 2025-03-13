@@ -37,7 +37,7 @@ export function Navbar() {
         <div className="flex items-center gap-6">
           <Link to="/" className="flex items-center space-x-2">
             {logo ? (
-              <img src={logo} alt={companyName} className="h-8 w-auto" />
+              <img src={logo} alt={companyName} className="h-8 w-auto max-w-[1600px]" />
             ) : (
               <span className="font-bold text-xl text-primary">{companyName}</span>
             )}
