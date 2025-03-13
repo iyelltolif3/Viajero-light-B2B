@@ -1,69 +1,74 @@
-# Welcome to your Lovable project
+# Viajero Light B2B
 
-## Project info
+## Descripción del Proyecto
 
-**URL**: https://lovable.dev/projects/d2876b1b-1760-43df-8bdb-a9fec2c49e76
+Este proyecto es una aplicación B2B (Business-to-Business) diseñada para gestionar y optimizar las operaciones de viajes corporativos. Proporciona una interfaz moderna y eficiente para la gestión de reservas, seguimiento de gastos y administración de viajes empresariales.
 
-## How can I edit this code?
+## Características Principales
 
-There are several ways of editing your application.
+- Gestión de reservas de viajes corporativos
+- Panel de administración para empresas
+- Seguimiento de gastos y presupuestos
+- Generación de informes
+- Integración con servicios de viajes
 
-**Use Lovable**
+## Tecnologías Utilizadas
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/d2876b1b-1760-43df-8bdb-a9fec2c49e76) and start prompting.
+Este proyecto está construido con:
 
-Changes made via Lovable will be committed automatically to this repo.
+- Vite - Para un desarrollo rápido y eficiente
+- TypeScript - Para un código más robusto y mantenible
+- React - Framework principal de la interfaz de usuario
+- shadcn-ui - Componentes UI modernos y accesibles
+- Tailwind CSS - Para un diseño responsive y personalizable
 
-**Use your preferred IDE**
+## Configuración del Entorno de Desarrollo
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
+Para comenzar a trabajar en este proyecto, necesitarás:
 
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+# Paso 1: Clonar el repositorio
+git clone https://github.com/tu-usuario/Viajero-light-B2B.git
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+# Paso 2: Navegar al directorio del proyecto
+cd Viajero-light-B2B
 
-# Step 3: Install the necessary dependencies.
-npm i
+# Paso 3: Instalar dependencias
+npm install
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# Paso 4: Iniciar el servidor de desarrollo
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+## Estructura del Proyecto
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+```
+Viajero-light-B2B/
+├── src/
+│   ├── components/     # Componentes reutilizables
+│   ├── pages/         # Páginas de la aplicación
+│   ├── services/      # Servicios y APIs
+│   └── utils/         # Utilidades y helpers
+├── public/            # Archivos estáticos
+└── ...
+```
 
-**Use GitHub Codespaces**
+## Scripts Disponibles
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+- `npm run dev` - Inicia el servidor de desarrollo
+- `npm run build` - Construye la aplicación para producción
+- `npm run preview` - Vista previa de la versión de producción
 
-## What technologies are used for this project?
+## Contribución
 
-This project is built with .
+Si deseas contribuir al proyecto:
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+1. Crea un fork del repositorio
+2. Crea una rama para tu feature (`git checkout -b feature/AmazingFeature`)
+3. Realiza tus cambios y haz commit (`git commit -m 'Add some AmazingFeature'`)
+4. Push a la rama (`git push origin feature/AmazingFeature`)
+5. Abre un Pull Request
 
-## How can I deploy this project?
+## Contacto
 
-Simply open [Lovable](https://lovable.dev/projects/d2876b1b-1760-43df-8bdb-a9fec2c49e76) and click on Share -> Publish.
-
-## I want to use a custom domain - is that possible?
-
-We don't support custom domains (yet). If you want to deploy your project under your own domain then we recommend using Netlify. Visit our docs for more details: [Custom domains](https://docs.lovable.dev/tips-tricks/custom-domain/)
+Para más información o soporte, contacta al equipo de desarrollo.

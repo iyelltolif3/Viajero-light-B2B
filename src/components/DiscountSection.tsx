@@ -4,17 +4,22 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import Carousel from './ui/carousel-custom';
 import { useSettingsStore } from '@/store/settingsStore';
-import type { DiscountItem } from '@/types/content';
+import type { DiscountItem } from '@/types';
 
-interface DiscountCardProps extends DiscountItem {
+interface DiscountCardProps {
+  title: string;
+  description: string;
+  discountPercentage: number;
+  validUntil: string;
+  imageSrc?: string;
   className?: string;
 }
 
 function DiscountCard({
   title,
   description,
-  discount,
-  expiryDate,
+  discountPercentage,
+  validUntil,
   imageSrc,
   className,
 }: DiscountCardProps) {
@@ -30,7 +35,7 @@ function DiscountCard({
         <div className="mb-auto">
           <span className="inline-flex items-center rounded-full bg-primary/90 px-2.5 py-1 text-xs font-semibold text-white backdrop-blur-sm">
             <Percent className="mr-1 h-3 w-3" />
-            {discount} Off
+            {discountPercentage}% Off
           </span>
         </div>
         
@@ -39,7 +44,7 @@ function DiscountCard({
         
         <div className="flex items-center text-white/70 text-xs mb-4">
           <Clock className="h-3 w-3 mr-1" />
-          <span>Expira: {expiryDate}</span>
+          <span>Expira: {validUntil}</span>
         </div>
         
         <Button variant="outline" className="bg-travel-100/10 backdrop-blur-sm text-white border-white/20 hover:bg-white/20 hover:text-white">
@@ -54,19 +59,50 @@ interface DiscountSectionProps {
   className?: string;
 }
 
-export function DiscountSection({ className }: DiscountSectionProps) {
-  const { content } = useSettingsStore();
-  const { sectionTitle, sectionSubtitle, badgeText, viewAllButtonText, discounts } = content.discountSection;
+const defaultContent = {
+  sectionTitle: "Ofertas y Descuentos",
+  sectionSubtitle: "Descubre nuestras mejores ofertas y descuentos especiales",
+  badgeText: "Descuentos Especiales",
+  viewAllButtonText: "Ver todas las ofertas",
+  discounts: []
+};
+
+function DiscountSection({ className }: DiscountSectionProps) {
+  const { settings } = useSettingsStore();
+  
+  // Use default content if settings or content is not available
+  const content = settings?.content?.discountSection || defaultContent;
+
+  // Safely access properties with fallbacks
+  const { 
+    sectionTitle = defaultContent.sectionTitle,
+    sectionSubtitle = defaultContent.sectionSubtitle,
+    badgeText = defaultContent.badgeText,
+    viewAllButtonText = defaultContent.viewAllButtonText,
+    discounts = defaultContent.discounts
+  } = content;
 
   // Filter active discounts and sort by order
-  const activeDiscounts = discounts
-    .filter(discount => discount.active)
-    .sort((a, b) => a.order - b.order);
+  const activeDiscounts = (discounts || [])
+    .filter(discount => discount?.active)
+    .sort((a, b) => (a?.order || 0) - (b?.order || 0));
+
+  // If no discounts are available, don't render the section
+  if (!activeDiscounts.length) {
+    return null;
+  }
 
   // Mobile carousel items
-  const mobileCarouselItems = activeDiscounts.map((discount, index) => (
+  const mobileCarouselItems = activeDiscounts.map((discount) => (
     <div key={discount.id} className="h-full w-full px-1">
-      <DiscountCard {...discount} className="h-full" />
+      <DiscountCard
+        title={discount.title}
+        description={discount.description}
+        discountPercentage={discount.discountPercentage}
+        validUntil={discount.validUntil}
+        imageSrc={discount.imageSrc}
+        className="h-full"
+      />
     </div>
   ));
 
@@ -87,7 +123,15 @@ export function DiscountSection({ className }: DiscountSectionProps) {
         {/* Desktop - Grid Layout */}
         <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-6">
           {activeDiscounts.slice(0, 3).map((discount) => (
-            <DiscountCard key={discount.id} {...discount} className="h-full" />
+            <DiscountCard
+              key={discount.id}
+              title={discount.title}
+              description={discount.description}
+              discountPercentage={discount.discountPercentage}
+              validUntil={discount.validUntil}
+              imageSrc={discount.imageSrc}
+              className="h-full"
+            />
           ))}
         </div>
 

@@ -15,6 +15,16 @@ interface SettingsState {
   discardChanges: () => void;
 }
 
+const defaultContent = {
+  discountSection: {
+    sectionTitle: "Ofertas y Descuentos",
+    sectionSubtitle: "Descubre nuestras mejores ofertas y descuentos especiales",
+    badgeText: "Descuentos Especiales",
+    viewAllButtonText: "Ver todas las ofertas",
+    discounts: []
+  }
+};
+
 export const useSettingsStore = create<SettingsState>((set, get) => ({
   settings: null,
   localSettings: null,
@@ -56,7 +66,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       const { data: emergencyContactsData, error: emergencyContactsError } = await supabase
         .from('emergency_contacts')
         .select('*')
-        .eq('"isActive"', true)
+        .eq('is_active', true)
         .order('priority');
 
       if (emergencyContactsError) throw emergencyContactsError;
@@ -76,6 +86,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       // Combinar todos los datos
       const settings: AdminSettings = {
         ...settingsData,
+        content: settingsData.content || defaultContent,
         zones: zonesData || [],
         ageRanges: ageRangesData || [],
         emergencyContacts: emergencyContactsData || [],
@@ -110,6 +121,10 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     const updatedSettings = {
       ...currentLocalSettings,
       ...newSettings,
+      content: {
+        ...currentLocalSettings.content,
+        ...(newSettings.content || {}),
+      },
     };
 
     set({
@@ -125,21 +140,24 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
 
       set({ isLoading: true, error: null });
 
+      const settingsToSave = {
+        brandName: localSettings.brandName,
+        brandLogo: localSettings.brandLogo,
+        primaryColor: localSettings.primaryColor,
+        secondaryColor: localSettings.secondaryColor,
+        tertiaryColor: localSettings.tertiaryColor,
+        notificationSettings: localSettings.notificationSettings,
+        paymentSettings: localSettings.paymentSettings,
+        notifications: localSettings.notifications,
+        branding: localSettings.branding,
+        content: localSettings.content || defaultContent,
+      };
+
       // Si no hay configuración previa, crear una nueva
       if (!get().settings) {
         const { data: settingsData, error: settingsError } = await supabase
           .from('system_settings')
-          .insert({
-            brandName: localSettings.brandName,
-            brandLogo: localSettings.brandLogo,
-            primaryColor: localSettings.primaryColor,
-            secondaryColor: localSettings.secondaryColor,
-            tertiaryColor: localSettings.tertiaryColor,
-            notificationSettings: localSettings.notificationSettings,
-            paymentSettings: localSettings.paymentSettings,
-            notifications: localSettings.notifications,
-            branding: localSettings.branding,
-          })
+          .insert(settingsToSave)
           .select()
           .single();
 
@@ -168,17 +186,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       // Si ya existe configuración, actualizarla
       const { error: settingsError } = await supabase
         .from('system_settings')
-        .update({
-          brandName: localSettings.brandName,
-          brandLogo: localSettings.brandLogo,
-          primaryColor: localSettings.primaryColor,
-          secondaryColor: localSettings.secondaryColor,
-          tertiaryColor: localSettings.tertiaryColor,
-          notificationSettings: localSettings.notificationSettings,
-          paymentSettings: localSettings.paymentSettings,
-          notifications: localSettings.notifications,
-          branding: localSettings.branding,
-        })
+        .update(settingsToSave)
         .eq('id', localSettings.id);
 
       if (settingsError) throw settingsError;
@@ -202,11 +210,8 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
         const { error: ageRangesError } = await supabase
           .from('age_ranges')
           .upsert(
-            localSettings.ageRanges.map(range => ({
-              ...range,
-              minAge: range.minAge,
-              maxAge: range.maxAge,
-              priceMultiplier: range.priceMultiplier,
+            localSettings.ageRanges.map(ageRange => ({
+              ...ageRange,
               settingsId: localSettings.id,
             }))
           );
@@ -216,17 +221,16 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
 
       // Si hay contactos de emergencia nuevos, actualizarlos
       if (localSettings.emergencyContacts) {
-        const { error: contactsError } = await supabase
+        const { error: emergencyContactsError } = await supabase
           .from('emergency_contacts')
           .upsert(
             localSettings.emergencyContacts.map(contact => ({
               ...contact,
-              isActive: contact.isActive,
               settingsId: localSettings.id,
             }))
           );
 
-        if (contactsError) throw contactsError;
+        if (emergencyContactsError) throw emergencyContactsError;
       }
 
       // Actualizar el estado con los cambios guardados
@@ -242,14 +246,14 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       });
 
     } catch (error: any) {
-      console.error('Error updating settings:', error);
+      console.error('Error saving settings:', error);
       set({
         isLoading: false,
-        error: error.message || 'Error al actualizar la configuración',
+        error: error.message || 'Error al guardar la configuración',
       });
       toast({
         title: "Error",
-        description: "No se pudo actualizar la configuración",
+        description: "No se pudo guardar la configuración",
         variant: "destructive",
       });
     }
@@ -260,10 +264,6 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     set({
       localSettings: settings,
       hasUnsavedChanges: false,
-    });
-    toast({
-      title: "Cambios descartados",
-      description: "Se han restaurado los valores anteriores",
     });
   },
 }));

@@ -1,7 +1,7 @@
 export interface BaseModel {
   id: string;
-  createdAt: string;
-  updatedAt: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface AdminSettings extends BaseModel {
@@ -10,81 +10,106 @@ export interface AdminSettings extends BaseModel {
   primaryColor: string;
   secondaryColor: string;
   tertiaryColor: string;
-  emergencyContacts: EmergencyContact[];
-  notificationSettings: NotificationSettings;
-  paymentSettings: PaymentSettings;
+  notificationSettings: {
+    emailEnabled: boolean;
+    smsEnabled: boolean;
+    pushEnabled: boolean;
+  };
+  paymentSettings: {
+    currency: string;
+    taxRate: number;
+    paymentMethods: string[];
+  };
+  notifications: {
+    id: string;
+    type: string;
+    message: string;
+    active: boolean;
+  }[];
+  branding: {
+    logo: string;
+    favicon: string;
+    colors: {
+      primary: string;
+      secondary: string;
+      accent: string;
+    };
+  };
+  content?: {
+    discountSection: {
+      sectionTitle: string;
+      sectionSubtitle: string;
+      badgeText: string;
+      viewAllButtonText: string;
+      discounts: Array<{
+        id: string;
+        title: string;
+        description: string;
+        code: string;
+        discountPercentage: number;
+        validUntil: string;
+        imageSrc?: string;
+        active: boolean;
+        order: number;
+      }>;
+    };
+    heroSection?: {
+      title: string;
+      subtitle: string;
+      ctaText: string;
+      backgroundImage: string;
+    };
+    featuresSection?: {
+      title: string;
+      subtitle: string;
+      features: Array<{
+        id: string;
+        title: string;
+        description: string;
+        icon: string;
+      }>;
+    };
+    testimonialSection?: {
+      title: string;
+      subtitle: string;
+      testimonials: Array<{
+        id: string;
+        author: string;
+        content: string;
+        rating: number;
+        avatar?: string;
+      }>;
+    };
+  };
   zones: Zone[];
   ageRanges: AgeRange[];
-  notifications: {
-    beforeExpiration: number[];
-    reminderEmails: boolean;
-    smsNotifications: boolean;
-    whatsappNotifications: boolean;
-  };
-  branding: {
-    primaryColor: string;
-    secondaryColor: string;
-    logo: string;
-    companyName: string;
-    contactEmail: string;
-    supportPhone: string;
-  };
-}
-
-export interface EmergencyContact extends BaseModel {
-  settingsId: string;
-  name: string;
-  phone: string;
-  email: string;
-  country: string;
-  address: string;
-  priority: number;
-  isActive: boolean;
-}
-
-export interface NotificationSettings {
-  emailNotifications: boolean;
-  pushNotifications: boolean;
-  smsNotifications: boolean;
-}
-
-export interface PaymentSettings {
-  currency: string;
-  acceptedMethods: string[];
-  taxRate: number;
-  commissionRate: number;
+  emergencyContacts: EmergencyContact[];
 }
 
 export interface Zone extends BaseModel {
-  settingsId: string;
   name: string;
-  priceMultiplier: number;
+  description: string;
+  price_multiplier: number;
+  risk_level: 'low' | 'medium' | 'high';
   countries: string[];
-  riskLevel: 'low' | 'medium' | 'high';
-  isActive: boolean;
+  is_active: boolean;
+  order: number;
 }
 
 export interface AgeRange extends BaseModel {
-  settingsId: string;
   minAge: number;
   maxAge: number;
-  priceMultiplier: number;
-  isActive: boolean;
+  price_multiplier: number;
+  description: string;
+  is_active: boolean;
+  order: number;
 }
 
-export interface ContentSettings extends BaseModel {
-  discountSection: {
-    sectionTitle: string;
-    sectionSubtitle: string;
-    badgeText: string;
-    viewAllButtonText: string;
-    discounts: Array<{
-      id: string;
-      title: string;
-      description: string;
-      code: string;
-      discountPercentage: number;
-      validUntil: string;
-    }>;
-  };
+export interface EmergencyContact extends BaseModel {
+  name: string;
+  phone: string;
+  email: string;
+  priority: number;
+  is_active: boolean;
+  description: string;
 }

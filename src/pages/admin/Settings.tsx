@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -14,17 +14,66 @@ import { useSettingsStore } from '@/store/settingsStore';
 import { X, Plus, Trash2, AlertCircle } from 'lucide-react';
 import { LogoUploader } from '@/components/ui/logo-uploader';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { PlanForm } from '@/components/admin/PlanForm';
 
 export default function AdminSettings() {
-  const { plans, updatePlan, addPlan, deletePlan } = usePlansStore();
-  const { settings, updateSettings, error: settingsError } = useSettingsStore();
+  const { plans, addLocalPlan, updateLocalPlan, deletePlan } = usePlansStore();
+  const { 
+    settings, 
+    localSettings,
+    updateLocalSettings,
+    saveSettings,
+    hasUnsavedChanges,
+    error: settingsError 
+  } = useSettingsStore();
   const [selectedPlanId, setSelectedPlanId] = useState<string>('');
+  const [formData, setFormData] = useState<AdminSettingsType | null>(null);
+
+  useEffect(() => {
+    if (settings) {
+      setFormData(settings);
+    }
+  }, [settings]);
 
   useEffect(() => {
     if (plans && plans.length > 0) {
       setSelectedPlanId(plans[0]?.id || '');
     }
   }, [plans]);
+
+  // Prevent accidental navigation when there are unsaved changes
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (hasUnsavedChanges) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [hasUnsavedChanges]);
+
+  const handleInputChange = (field: keyof AdminSettingsType, value: any) => {
+    updateLocalSettings({ [field]: value });
+  };
+
+  const handleSave = async () => {
+    try {
+      await saveSettings();
+      toast({
+        title: "Configuración guardada",
+        description: "Los cambios han sido aplicados exitosamente.",
+        variant: "default"
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "No se pudieron guardar los cambios",
+        variant: "destructive",
+      });
+    }
+  };
 
   // Si hay un error al cargar los datos, mostrar una alerta
   if (settingsError) {
@@ -55,40 +104,53 @@ export default function AdminSettings() {
           <CardContent>
             <Button 
               onClick={() => {
-                updateSettings({
+                const defaultContent = {
+                  discountSection: {
+                    sectionTitle: "Ofertas y Descuentos",
+                    sectionSubtitle: "Descubre nuestras mejores ofertas y descuentos especiales",
+                    badgeText: "Descuentos Especiales",
+                    viewAllButtonText: "Ver todas las ofertas",
+                    discounts: []
+                  }
+                };
+
+                updateLocalSettings({
                   brandName: 'Mi Empresa',
                   brandLogo: '',
                   primaryColor: '#0f172a',
                   secondaryColor: '#64748b',
                   tertiaryColor: '#e2e8f0',
-                  emergencyContacts: [],
                   notificationSettings: {
-                    emailNotifications: true,
-                    pushNotifications: false,
-                    smsNotifications: false
+                    emailEnabled: true,
+                    smsEnabled: false,
+                    pushEnabled: false
                   },
                   paymentSettings: {
                     currency: 'USD',
-                    acceptedMethods: ['card', 'transfer'],
-                    taxRate: 0,
-                    commissionRate: 0
+                    paymentMethods: ['card', 'transfer'],
+                    taxRate: 0
                   },
+                  notifications: [
+                    {
+                      id: '1',
+                      type: 'expiration',
+                      message: 'Tu póliza está por vencer',
+                      active: true
+                    }
+                  ],
+                  branding: {
+                    logo: '',
+                    favicon: '',
+                    colors: {
+                      primary: '#0f172a',
+                      secondary: '#64748b',
+                      accent: '#e2e8f0'
+                    }
+                  },
+                  content: defaultContent,
                   zones: [],
                   ageRanges: [],
-                  notifications: {
-                    beforeExpiration: [1, 7, 30],
-                    reminderEmails: true,
-                    smsNotifications: false,
-                    whatsappNotifications: false
-                  },
-                  branding: {
-                    primaryColor: '#0f172a',
-                    secondaryColor: '#64748b',
-                    logo: '',
-                    companyName: 'Mi Empresa',
-                    contactEmail: '',
-                    supportPhone: ''
-                  }
+                  emergencyContacts: []
                 });
               }}
             >
@@ -101,47 +163,136 @@ export default function AdminSettings() {
     );
   }
 
-  const handleSave = () => {
+  const handleAddPlan = () => {
+    const newPlan = {
+      name: 'Nuevo Plan',
+      description: 'Descripción del nuevo plan',
+      price: 0,
+      base_price: 0,
+      price_multiplier: 1,
+      price_detail: 'por día / por persona',
+      features: [],
+      badge: '',
+      max_days: 30,
+      coverage_details: {
+        medical_coverage: 0,
+        luggage_coverage: 0,
+        cancellation_coverage: 0,
+        covid_coverage: false,
+        pre_existing_conditions: false,
+        adventure_sports: false,
+      },
+      is_active: true
+    };
+    
+    // Add the plan and get its ID
+    const id = addLocalPlan(newPlan);
+    // Automatically select the new plan
+    setSelectedPlanId(id);
     toast({
-      title: "Configuración guardada",
-      description: "Los cambios han sido aplicados exitosamente.",
+      title: "Plan creado",
+      description: "El plan ha sido creado. Realiza los cambios necesarios y guarda para confirmar.",
     });
+  };
+
+  const handleSavePlan = () => {
+    if (selectedPlan) {
+      updateLocalPlan(selectedPlan.id, selectedPlan);
+      toast({
+        title: "Plan guardado",
+        description: "Los cambios han sido aplicados exitosamente.",
+      });
+    }
   };
 
   const selectedPlan = plans?.find(p => p.id === selectedPlanId);
 
-  const handleAddPlan = () => {
-    const newPlan = {
+  const handleUpdateZone = (zone: Zone, field: keyof Zone, value: any) => {
+    const updatedZones = localSettings.zones.map((z) =>
+      z.id === zone.id ? { ...z, [field]: value } : z
+    );
+    handleInputChange('zones', updatedZones);
+  };
+
+  const handleAddZone = () => {
+    const newZone: Zone = {
       id: Date.now().toString(),
-      name: 'Nuevo Plan',
-      description: 'Descripción del nuevo plan',
-      price: 0,
-      basePrice: 0,
-      priceMultiplier: 1,
-      priceDetail: 'por día / por persona',
-      features: [],
-      badge: '',
-      maxDays: 30,
-      coverageDetails: {
-        medicalCoverage: 0,
-        luggageCoverage: 0,
-        cancellationCoverage: 0,
-        covidCoverage: false,
-        preExistingConditions: false,
-        adventureSports: false,
-      },
+      name: '',
+      description: '',
+      price_multiplier: 1,
+      risk_level: 'low',
+      countries: [],
+      is_active: true,
+      order: localSettings.zones.length,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
     };
-    addPlan(newPlan);
-    setSelectedPlanId(newPlan.id);
-    toast({
-      title: "Plan creado",
-      description: "Se ha creado un nuevo plan. Personalízalo según tus necesidades.",
-    });
+    handleInputChange('zones', [...localSettings.zones, newZone]);
+  };
+
+  const handleUpdateAgeRange = (range: AgeRange, field: keyof AgeRange, value: any) => {
+    const updatedRanges = localSettings.ageRanges.map((r) =>
+      r.id === range.id ? { ...r, [field]: value } : r
+    );
+    handleInputChange('ageRanges', updatedRanges);
+  };
+
+  const handleAddAgeRange = () => {
+    const newRange: AgeRange = {
+      id: Date.now().toString(),
+      minAge: 0,
+      maxAge: 0,
+      price_multiplier: 1,
+      description: '',
+      is_active: true,
+      order: localSettings.ageRanges.length,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+    handleInputChange('ageRanges', [...localSettings.ageRanges, newRange]);
+  };
+
+  const handleUpdateEmergencyContact = (contact: EmergencyContact, field: keyof EmergencyContact, value: any) => {
+    const updatedContacts = localSettings.emergencyContacts.map((c) =>
+      c.id === contact.id ? { ...c, [field]: value } : c
+    );
+    handleInputChange('emergencyContacts', updatedContacts);
+  };
+
+  const handleAddEmergencyContact = () => {
+    const newContact: EmergencyContact = {
+      id: Date.now().toString(),
+      name: '',
+      phone: '',
+      email: '',
+      priority: localSettings.emergencyContacts.length + 1,
+      is_active: true,
+      description: '',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+    handleInputChange('emergencyContacts', [...localSettings.emergencyContacts, newContact]);
   };
 
   return (
     <div className="container mx-auto py-8 px-4">
-      <h1 className="text-3xl font-bold mb-8">Configuración del Sistema</h1>
+      <div className="flex justify-between items-center mb-8">
+        <h1 className="text-3xl font-bold">Configuración del Sistema</h1>
+        {hasUnsavedChanges && (
+          <div className="flex items-center gap-4">
+            <Alert>
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Hay cambios sin guardar</AlertTitle>
+              <AlertDescription>
+                Por favor, guarda los cambios antes de salir.
+              </AlertDescription>
+            </Alert>
+            <Button onClick={handleSave}>
+              Guardar Cambios
+            </Button>
+          </div>
+        )}
+      </div>
 
       <Tabs defaultValue={!plans?.length ? "branding" : "plans"} className="space-y-6">
         <TabsList className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2">
@@ -158,224 +309,39 @@ export default function AdminSettings() {
           <Card>
             <CardHeader>
               <div className="flex justify-between items-center">
-                <CardTitle>Configuración de Planes</CardTitle>
+                <div>
+                  <CardTitle>Planes</CardTitle>
+                  {!plans?.length ? (
+                    <div className="mt-4">
+                      <Alert>
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertTitle>No hay planes configurados</AlertTitle>
+                        <AlertDescription>
+                          Para comenzar, crea tu primer plan usando el botón "Nuevo Plan"
+                        </AlertDescription>
+                      </Alert>
+                    </div>
+                  ) : (
+                    <CardDescription>
+                      Gestiona los planes de asistencia disponibles
+                    </CardDescription>
+                  )}
+                </div>
                 <Button onClick={handleAddPlan}>
-                  <Plus className="h-4 w-4 mr-2" />
                   Nuevo Plan
                 </Button>
               </div>
-              <CardDescription>
-                {!plans?.length ? (
-                  <Alert className="mt-4">
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertTitle>No hay planes configurados</AlertTitle>
-                    <AlertDescription>
-                      Para comenzar, crea tu primer plan usando el botón "Nuevo Plan"
-                    </AlertDescription>
-                  </Alert>
-                ) : (
-                  "Gestiona los planes de asistencia disponibles"
-                )}
-              </CardDescription>
             </CardHeader>
-            <CardContent>
-              {plans?.length > 0 && (
-                <div className="space-y-4">
-                  <div>
-                    <Label>Seleccionar Plan</Label>
-                    <Select value={selectedPlanId} onValueChange={setSelectedPlanId}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecciona un plan" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {plans.map(plan => (
-                          <SelectItem key={plan.id} value={plan.id}>
-                            {plan.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {selectedPlan && (
-                    <div className="space-y-6">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <Label>Nombre del Plan</Label>
-                          <Input
-                            value={selectedPlan.name}
-                            onChange={(e) => updatePlan(selectedPlan.id, { name: e.target.value })}
-                          />
-                        </div>
-                        <div>
-                          <Label>Descripción</Label>
-                          <Input
-                            value={selectedPlan.description}
-                            onChange={(e) => updatePlan(selectedPlan.id, { description: e.target.value })}
-                          />
-                        </div>
-                        <div>
-                          <Label>Precio Base</Label>
-                          <Input
-                            type="number"
-                            value={selectedPlan.basePrice}
-                            onChange={(e) => updatePlan(selectedPlan.id, { basePrice: parseFloat(e.target.value) })}
-                          />
-                        </div>
-                        <div>
-                          <Label>Multiplicador de Precio</Label>
-                          <Input
-                            type="number"
-                            value={selectedPlan.priceMultiplier}
-                            onChange={(e) => updatePlan(selectedPlan.id, { priceMultiplier: parseFloat(e.target.value) })}
-                          />
-                        </div>
-                      </div>
-
-                      <div>
-                        <Label>Características</Label>
-                        <div className="space-y-2">
-                          {selectedPlan.features.map((feature, index) => (
-                            <div key={index} className="flex gap-2">
-                              <Input
-                                value={feature}
-                                onChange={(e) => {
-                                  const newFeatures = [...selectedPlan.features];
-                                  newFeatures[index] = e.target.value;
-                                  updatePlan(selectedPlan.id, { features: newFeatures });
-                                }}
-                              />
-                              <Button
-                                variant="destructive"
-                                size="icon"
-                                onClick={() => {
-                                  const newFeatures = selectedPlan.features.filter((_, i) => i !== index);
-                                  updatePlan(selectedPlan.id, { features: newFeatures });
-                                }}
-                              >
-                                <X className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          ))}
-                          <Button
-                            variant="outline"
-                            onClick={() => {
-                              const newFeatures = [...selectedPlan.features, ''];
-                              updatePlan(selectedPlan.id, { features: newFeatures });
-                            }}
-                          >
-                            <Plus className="h-4 w-4 mr-2" />
-                            Agregar Característica
-                          </Button>
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <Label>Cobertura Médica (USD)</Label>
-                          <Input
-                            type="number"
-                            value={selectedPlan.coverageDetails.medicalCoverage}
-                            onChange={(e) => updatePlan(selectedPlan.id, {
-                              coverageDetails: {
-                                ...selectedPlan.coverageDetails,
-                                medicalCoverage: parseFloat(e.target.value)
-                              }
-                            })}
-                          />
-                        </div>
-                        <div>
-                          <Label>Cobertura de Equipaje (USD)</Label>
-                          <Input
-                            type="number"
-                            value={selectedPlan.coverageDetails.luggageCoverage}
-                            onChange={(e) => updatePlan(selectedPlan.id, {
-                              coverageDetails: {
-                                ...selectedPlan.coverageDetails,
-                                luggageCoverage: parseFloat(e.target.value)
-                              }
-                            })}
-                          />
-                        </div>
-                        <div>
-                          <Label>Cobertura de Cancelación (USD)</Label>
-                          <Input
-                            type="number"
-                            value={selectedPlan.coverageDetails.cancellationCoverage}
-                            onChange={(e) => updatePlan(selectedPlan.id, {
-                              coverageDetails: {
-                                ...selectedPlan.coverageDetails,
-                                cancellationCoverage: parseFloat(e.target.value)
-                              }
-                            })}
-                          />
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div className="flex items-center space-x-2">
-                          <Switch
-                            id="covid"
-                            checked={selectedPlan.coverageDetails.covidCoverage}
-                            onCheckedChange={(checked) => updatePlan(selectedPlan.id, {
-                              coverageDetails: {
-                                ...selectedPlan.coverageDetails,
-                                covidCoverage: checked
-                              }
-                            })}
-                          />
-                          <Label htmlFor="covid">Cobertura COVID-19</Label>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <Switch
-                            id="preexisting"
-                            checked={selectedPlan.coverageDetails.preExistingConditions}
-                            onCheckedChange={(checked) => updatePlan(selectedPlan.id, {
-                              coverageDetails: {
-                                ...selectedPlan.coverageDetails,
-                                preExistingConditions: checked
-                              }
-                            })}
-                          />
-                          <Label htmlFor="preexisting">Condiciones Preexistentes</Label>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <Switch
-                            id="adventure"
-                            checked={selectedPlan.coverageDetails.adventureSports}
-                            onCheckedChange={(checked) => updatePlan(selectedPlan.id, {
-                              coverageDetails: {
-                                ...selectedPlan.coverageDetails,
-                                adventureSports: checked
-                              }
-                            })}
-                          />
-                          <Label htmlFor="adventure">Deportes de Aventura</Label>
-                        </div>
-                      </div>
-
-                      <div className="flex justify-end space-x-2">
-                        <Button
-                          variant="destructive"
-                          onClick={() => {
-                            if (confirm('¿Estás seguro de que deseas eliminar este plan?')) {
-                              deletePlan(selectedPlan.id);
-                              if (plans.length > 1) {
-                                setSelectedPlanId(plans.find(p => p.id !== selectedPlan.id)?.id || '');
-                              } else {
-                                setSelectedPlanId('');
-                              }
-                            }
-                          }}
-                        >
-                          <Trash2 className="h-4 w-4 mr-2" />
-                          Eliminar Plan
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
+            <CardContent className="space-y-4">
+              {plans?.map((plan) => (
+                <PlanForm
+                  key={plan.id}
+                  plan={plan}
+                  isSelected={selectedPlanId === plan.id}
+                  onSelect={() => setSelectedPlanId(plan.id === selectedPlanId ? null : plan.id)}
+                  onChange={(updates) => updateLocalPlan(plan.id, updates)}
+                />
+              ))}
             </CardContent>
           </Card>
         </TabsContent>
@@ -383,148 +349,52 @@ export default function AdminSettings() {
         <TabsContent value="zones">
           <Card>
             <CardHeader>
-              <div className="flex justify-between items-center">
-                <CardTitle>Configuración de Zonas</CardTitle>
-                <Button
-                  onClick={() => {
-                    const newZone: Zone = {
-                      id: Date.now().toString(),
-                      settingsId: settings.id,
-                      name: 'Nueva Zona',
-                      priceMultiplier: 1,
-                      countries: [],
-                      riskLevel: 'low',
-                      isActive: true,
-                      createdAt: new Date().toISOString(),
-                      updatedAt: new Date().toISOString()
-                    };
-                    updateSettings({
-                      zones: [...settings.zones, newZone]
-                    });
-                  }}
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Nueva Zona
-                </Button>
-              </div>
+              <CardTitle>Zonas</CardTitle>
               <CardDescription>
-                Gestiona las zonas geográficas y sus multiplicadores de precio
+                Configura las zonas y sus multiplicadores de precio
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-6">
-                {settings.zones.map((zone, index) => (
-                  <div key={zone.id} className="space-y-4 p-4 border rounded-lg">
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1 space-y-4">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div>
-                            <Label>Nombre de la Zona</Label>
-                            <Input
-                              value={zone.name}
-                              onChange={(e) => {
-                                const newZones = [...settings.zones];
-                                newZones[index] = { ...zone, name: e.target.value };
-                                updateSettings({ zones: newZones });
-                              }}
-                            />
-                          </div>
-                          <div>
-                            <Label>Multiplicador de Precio</Label>
-                            <Input
-                              type="number"
-                              min="0"
-                              step="0.1"
-                              value={zone.priceMultiplier}
-                              onChange={(e) => {
-                                const newZones = [...settings.zones];
-                                newZones[index] = { ...zone, priceMultiplier: parseFloat(e.target.value) };
-                                updateSettings({ zones: newZones });
-                              }}
-                            />
-                          </div>
-                        </div>
-                        <div>
-                          <Label>Nivel de Riesgo</Label>
-                          <Select
-                            value={zone.riskLevel}
-                            onValueChange={(value: 'low' | 'medium' | 'high') => {
-                              const newZones = [...settings.zones];
-                              newZones[index] = { ...zone, riskLevel: value };
-                              updateSettings({ zones: newZones });
-                            }}
-                          >
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="low">Bajo</SelectItem>
-                              <SelectItem value="medium">Medio</SelectItem>
-                              <SelectItem value="high">Alto</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div>
-                          <Label>Países</Label>
-                          <div className="space-y-2">
-                            {zone.countries.map((country, countryIndex) => (
-                              <div key={countryIndex} className="flex gap-2">
-                                <Input
-                                  value={country}
-                                  onChange={(e) => {
-                                    const newZones = [...settings.zones];
-                                    const newCountries = [...zone.countries];
-                                    newCountries[countryIndex] = e.target.value;
-                                    newZones[index] = { ...zone, countries: newCountries };
-                                    updateSettings({ zones: newZones });
-                                  }}
-                                />
-                                <Button
-                                  variant="destructive"
-                                  size="icon"
-                                  onClick={() => {
-                                    const newZones = [...settings.zones];
-                                    const newCountries = zone.countries.filter((_, i) => i !== countryIndex);
-                                    newZones[index] = { ...zone, countries: newCountries };
-                                    updateSettings({ zones: newZones });
-                                  }}
-                                >
-                                  <X className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            ))}
-                            <Button
-                              variant="outline"
-                              onClick={() => {
-                                const newZones = [...settings.zones];
-                                newZones[index] = {
-                                  ...zone,
-                                  countries: [...zone.countries, '']
-                                };
-                                updateSettings({ zones: newZones });
-                              }}
-                            >
-                              <Plus className="h-4 w-4 mr-2" />
-                              Agregar País
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                      <Button
-                        variant="destructive"
-                        size="icon"
-                        onClick={() => {
-                          const newZones = settings.zones.filter((_, i) => i !== index);
-                          updateSettings({ zones: newZones });
-                        }}
+              <div className="space-y-4">
+                {localSettings.zones.map((zone) => (
+                  <div key={zone.id} className="space-y-2">
+                    <div className="flex items-center gap-4">
+                      <Input
+                        value={zone.name}
+                        onChange={(e) => handleUpdateZone(zone, 'name', e.target.value)}
+                        placeholder="Nombre de la zona"
+                      />
+                      <Input
+                        type="number"
+                        value={zone.price_multiplier}
+                        onChange={(e) => handleUpdateZone(zone, 'price_multiplier', parseFloat(e.target.value))}
+                        placeholder="Multiplicador"
+                      />
+                      <Select
+                        value={zone.risk_level}
+                        onValueChange={(value) => handleUpdateZone(zone, 'risk_level', value)}
                       >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Nivel de riesgo" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="low">Bajo</SelectItem>
+                          <SelectItem value="medium">Medio</SelectItem>
+                          <SelectItem value="high">Alto</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Switch
+                        checked={zone.is_active}
+                        onCheckedChange={(checked) => handleUpdateZone(zone, 'is_active', checked)}
+                      />
                     </div>
                   </div>
                 ))}
               </div>
             </CardContent>
+            <CardFooter>
+              <Button onClick={handleAddZone}>Agregar Zona</Button>
+            </CardFooter>
           </Card>
         </TabsContent>
 
@@ -533,333 +403,163 @@ export default function AdminSettings() {
             <CardHeader>
               <CardTitle>Rangos de Edad</CardTitle>
               <CardDescription>
-                Define los multiplicadores de precio por rango de edad
+                Configura los rangos de edad y sus multiplicadores de precio
               </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {settings.ageRanges.map((range, index) => (
-                  <div key={range.id} className="flex items-end gap-4">
-                    <div className="flex-1">
-                      <Label>Edad Mínima</Label>
+                {localSettings.ageRanges.map((range) => (
+                  <div key={range.id} className="space-y-2">
+                    <div className="flex items-center gap-4">
                       <Input
                         type="number"
                         value={range.minAge}
-                        onChange={(e) => {
-                          const newRanges = [...settings.ageRanges];
-                          newRanges[index] = {
-                            ...range,
-                            minAge: parseInt(e.target.value),
-                          };
-                          updateSettings({
-                            ...settings,
-                            ageRanges: newRanges,
-                          });
-                        }}
+                        onChange={(e) => handleUpdateAgeRange(range, 'minAge', parseInt(e.target.value))}
+                        placeholder="Edad mínima"
                       />
-                    </div>
-                    <div className="flex-1">
-                      <Label>Edad Máxima</Label>
                       <Input
                         type="number"
                         value={range.maxAge}
-                        onChange={(e) => {
-                          const newRanges = [...settings.ageRanges];
-                          newRanges[index] = {
-                            ...range,
-                            maxAge: parseInt(e.target.value),
-                          };
-                          updateSettings({
-                            ...settings,
-                            ageRanges: newRanges,
-                          });
-                        }}
+                        onChange={(e) => handleUpdateAgeRange(range, 'maxAge', parseInt(e.target.value))}
+                        placeholder="Edad máxima"
                       />
-                    </div>
-                    <div className="flex-1">
-                      <Label>Multiplicador</Label>
                       <Input
                         type="number"
-                        step="0.1"
-                        value={range.priceMultiplier}
-                        onChange={(e) => {
-                          const newRanges = [...settings.ageRanges];
-                          newRanges[index] = {
-                            ...range,
-                            priceMultiplier: parseFloat(e.target.value),
-                          };
-                          updateSettings({
-                            ...settings,
-                            ageRanges: newRanges,
-                          });
-                        }}
+                        value={range.price_multiplier}
+                        onChange={(e) => handleUpdateAgeRange(range, 'price_multiplier', parseFloat(e.target.value))}
+                        placeholder="Multiplicador"
+                      />
+                      <Switch
+                        checked={range.is_active}
+                        onCheckedChange={(checked) => handleUpdateAgeRange(range, 'is_active', checked)}
                       />
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => {
-                        const newRanges = settings.ageRanges.filter(r => r.id !== range.id);
-                        updateSettings({
-                          ...settings,
-                          ageRanges: newRanges,
-                        });
-                      }}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
                   </div>
                 ))}
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    const newAgeRange: AgeRange = {
-                      id: Date.now().toString(),
-                      settingsId: settings.id,
-                      minAge: 0,
-                      maxAge: 99,
-                      priceMultiplier: 1,
-                      isActive: true,
-                      createdAt: new Date().toISOString(),
-                      updatedAt: new Date().toISOString(),
-                    };
-                    updateSettings({
-                      ...settings,
-                      ageRanges: [...settings.ageRanges, newAgeRange],
-                    });
-                  }}
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Nuevo Rango
-                </Button>
               </div>
             </CardContent>
+            <CardFooter>
+              <Button onClick={handleAddAgeRange}>Agregar Rango</Button>
+            </CardFooter>
           </Card>
         </TabsContent>
 
         <TabsContent value="emergency">
           <Card>
             <CardHeader>
-              <div className="flex justify-between items-center">
-                <CardTitle>Contactos de Emergencia</CardTitle>
-                <Button
-                  onClick={() => {
-                    const newContact: EmergencyContact = {
-                      id: Date.now().toString(),
-                      settingsId: settings.id,
-                      name: '',
-                      phone: '',
-                      email: '',
-                      country: '',
-                      address: '',
-                      priority: settings.emergencyContacts.length,
-                      isActive: true,
-                      createdAt: new Date().toISOString(),
-                      updatedAt: new Date().toISOString(),
-                    };
-                    updateSettings({
-                      emergencyContacts: [...settings.emergencyContacts, newContact],
-                    });
-                  }}
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Nuevo Contacto
-                </Button>
-              </div>
+              <CardTitle>Contactos de Emergencia</CardTitle>
               <CardDescription>
-                Gestiona los contactos de emergencia por país
+                Configura los contactos de emergencia del sistema
               </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {settings.emergencyContacts.map((contact, index) => (
-                  <div key={contact.id} className="space-y-4 p-4 border rounded-lg">
-                    <div className="flex items-center justify-between">
-                      <h4 className="text-sm font-medium">
-                        Contacto #{index + 1}
-                      </h4>
-                      <div className="flex items-center gap-2">
-                        <Switch
-                          checked={contact.isActive}
-                          onCheckedChange={(checked) => {
-                            const newContacts = [...settings.emergencyContacts];
-                            newContacts[index] = {
-                              ...contact,
-                              isActive: checked,
-                            };
-                            updateSettings({
-                              emergencyContacts: newContacts,
-                            });
-                          }}
-                        />
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => {
-                            const newContacts = settings.emergencyContacts.filter(c => c.id !== contact.id);
-                            updateSettings({
-                              emergencyContacts: newContacts,
-                            });
-                          }}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <Label>Nombre</Label>
-                        <Input
-                          value={contact.name}
-                          onChange={(e) => {
-                            const newContacts = [...settings.emergencyContacts];
-                            newContacts[index] = {
-                              ...contact,
-                              name: e.target.value,
-                            };
-                            updateSettings({
-                              emergencyContacts: newContacts,
-                            });
-                          }}
-                        />
-                      </div>
-                      <div>
-                        <Label>Teléfono</Label>
-                        <Input
-                          value={contact.phone}
-                          onChange={(e) => {
-                            const newContacts = [...settings.emergencyContacts];
-                            newContacts[index] = {
-                              ...contact,
-                              phone: e.target.value,
-                            };
-                            updateSettings({
-                              emergencyContacts: newContacts,
-                            });
-                          }}
-                        />
-                      </div>
-                      <div>
-                        <Label>Email</Label>
-                        <Input
-                          type="email"
-                          value={contact.email}
-                          onChange={(e) => {
-                            const newContacts = [...settings.emergencyContacts];
-                            newContacts[index] = {
-                              ...contact,
-                              email: e.target.value,
-                            };
-                            updateSettings({
-                              emergencyContacts: newContacts,
-                            });
-                          }}
-                        />
-                      </div>
-                      <div>
-                        <Label>País</Label>
-                        <Input
-                          value={contact.country}
-                          onChange={(e) => {
-                            const newContacts = [...settings.emergencyContacts];
-                            newContacts[index] = {
-                              ...contact,
-                              country: e.target.value,
-                            };
-                            updateSettings({
-                              emergencyContacts: newContacts,
-                            });
-                          }}
-                        />
-                      </div>
+                {localSettings.emergencyContacts.map((contact) => (
+                  <div key={contact.id} className="space-y-2">
+                    <div className="flex items-center gap-4">
+                      <Input
+                        value={contact.name}
+                        onChange={(e) => handleUpdateEmergencyContact(contact, 'name', e.target.value)}
+                        placeholder="Nombre"
+                      />
+                      <Input
+                        value={contact.phone}
+                        onChange={(e) => handleUpdateEmergencyContact(contact, 'phone', e.target.value)}
+                        placeholder="Teléfono"
+                      />
+                      <Input
+                        value={contact.email}
+                        onChange={(e) => handleUpdateEmergencyContact(contact, 'email', e.target.value)}
+                        placeholder="Email"
+                      />
+                      <Switch
+                        checked={contact.is_active}
+                        onCheckedChange={(checked) => handleUpdateEmergencyContact(contact, 'is_active', checked)}
+                      />
                     </div>
                   </div>
                 ))}
               </div>
             </CardContent>
+            <CardFooter>
+              <Button onClick={handleAddEmergencyContact}>Agregar Contacto</Button>
+            </CardFooter>
           </Card>
         </TabsContent>
 
         <TabsContent value="notifications">
           <Card>
             <CardHeader>
-              <CardTitle>Configuración de Notificaciones</CardTitle>
+              <CardTitle>Notificaciones</CardTitle>
               <CardDescription>
-                Configura las notificaciones automáticas
+                Configura las notificaciones del sistema
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-6">
-                <div>
-                  <Label>Días antes de expiración para notificar</Label>
-                  <div className="flex gap-2 mt-2">
-                    {settings.notifications.beforeExpiration.map((days, index) => (
-                      <Input 
-                        key={index}
-                        type="number"
-                        value={days}
-                        className="w-20"
-                        onChange={(e) => {
-                          const newDays = [...settings.notifications.beforeExpiration];
-                          newDays[index] = parseInt(e.target.value);
-                          updateSettings({
-                            ...settings,
-                            notifications: {
-                              ...settings.notifications,
-                              beforeExpiration: newDays
-                            }
-                          });
-                        }}
-                      />
-                    ))}
+              <div className="space-y-4">
+                <div className="flex items-center gap-4">
+                  <div className="flex-1">
+                    <Label>Email</Label>
+                    <Switch
+                      checked={localSettings.notificationSettings.emailEnabled}
+                      onCheckedChange={(checked) =>
+                        handleInputChange('notificationSettings', {
+                          ...localSettings.notificationSettings,
+                          emailEnabled: checked,
+                        })
+                      }
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <Label>SMS</Label>
+                    <Switch
+                      checked={localSettings.notificationSettings.smsEnabled}
+                      onCheckedChange={(checked) =>
+                        handleInputChange('notificationSettings', {
+                          ...localSettings.notificationSettings,
+                          smsEnabled: checked,
+                        })
+                      }
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <Label>Push</Label>
+                    <Switch
+                      checked={localSettings.notificationSettings.pushEnabled}
+                      onCheckedChange={(checked) =>
+                        handleInputChange('notificationSettings', {
+                          ...localSettings.notificationSettings,
+                          pushEnabled: checked,
+                        })
+                      }
+                    />
                   </div>
                 </div>
-                <div className="space-y-4">
-                  <div className="flex items-center space-x-2">
-                    <Switch
-                      checked={settings.notifications.reminderEmails}
-                      onCheckedChange={(checked) => {
-                        updateSettings({
-                          ...settings,
-                          notifications: {
-                            ...settings.notifications,
-                            reminderEmails: checked
-                          }
-                        });
-                      }}
-                    />
-                    <Label>Enviar recordatorios por email</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Switch
-                      checked={settings.notifications.smsNotifications}
-                      onCheckedChange={(checked) => {
-                        updateSettings({
-                          ...settings,
-                          notifications: {
-                            ...settings.notifications,
-                            smsNotifications: checked
-                          }
-                        });
-                      }}
-                    />
-                    <Label>Enviar notificaciones por SMS</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Switch
-                      checked={settings.notifications.whatsappNotifications}
-                      onCheckedChange={(checked) => {
-                        updateSettings({
-                          ...settings,
-                          notifications: {
-                            ...settings.notifications,
-                            whatsappNotifications: checked
-                          }
-                        });
-                      }}
-                    />
-                    <Label>Enviar notificaciones por WhatsApp</Label>
-                  </div>
+                <div className="space-y-2">
+                  <Label>Notificaciones Activas</Label>
+                  {localSettings.notifications.map((notification) => (
+                    <div key={notification.id} className="flex items-center gap-4">
+                      <Input
+                        value={notification.message}
+                        onChange={(e) => {
+                          const updatedNotifications = localSettings.notifications.map((n) =>
+                            n.id === notification.id ? { ...n, message: e.target.value } : n
+                          );
+                          handleInputChange('notifications', updatedNotifications);
+                        }}
+                        placeholder="Mensaje"
+                      />
+                      <Switch
+                        checked={notification.active}
+                        onCheckedChange={(checked) => {
+                          const updatedNotifications = localSettings.notifications.map((n) =>
+                            n.id === notification.id ? { ...n, active: checked } : n
+                          );
+                          handleInputChange('notifications', updatedNotifications);
+                        }}
+                      />
+                    </div>
+                  ))}
                 </div>
               </div>
             </CardContent>
@@ -871,66 +571,66 @@ export default function AdminSettings() {
             <CardHeader>
               <CardTitle>Configuración de Pagos</CardTitle>
               <CardDescription>
-                Configura los métodos de pago y tarifas
+                Configura los métodos de pago y tasas
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-6">
+              <div className="space-y-4">
                 <div>
                   <Label>Moneda</Label>
                   <Select
-                    value={settings.paymentSettings.currency}
-                    onValueChange={(value) => {
-                      updateSettings({
-                        ...settings,
-                        paymentSettings: {
-                          ...settings.paymentSettings,
-                          currency: value
-                        }
-                      });
-                    }}
+                    value={localSettings.paymentSettings.currency}
+                    onValueChange={(value) =>
+                      handleInputChange('paymentSettings', {
+                        ...localSettings.paymentSettings,
+                        currency: value,
+                      })
+                    }
                   >
                     <SelectTrigger>
-                      <SelectValue />
+                      <SelectValue placeholder="Selecciona una moneda" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="USD">USD</SelectItem>
                       <SelectItem value="EUR">EUR</SelectItem>
-                      <SelectItem value="CLP">CLP</SelectItem>
+                      <SelectItem value="GBP">GBP</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div>
-                  <Label>Tasa de Impuestos (%)</Label>
-                  <Input 
+                  <Label>Tasa de Impuesto (%)</Label>
+                  <Input
                     type="number"
-                    value={settings.paymentSettings.taxRate}
-                    onChange={(e) => {
-                      updateSettings({
-                        ...settings,
-                        paymentSettings: {
-                          ...settings.paymentSettings,
-                          taxRate: parseFloat(e.target.value)
-                        }
-                      });
-                    }}
+                    value={localSettings.paymentSettings.taxRate}
+                    onChange={(e) =>
+                      handleInputChange('paymentSettings', {
+                        ...localSettings.paymentSettings,
+                        taxRate: parseFloat(e.target.value),
+                      })
+                    }
                   />
                 </div>
                 <div>
-                  <Label>Tasa de Comisión (%)</Label>
-                  <Input 
-                    type="number"
-                    value={settings.paymentSettings.commissionRate}
-                    onChange={(e) => {
-                      updateSettings({
-                        ...settings,
-                        paymentSettings: {
-                          ...settings.paymentSettings,
-                          commissionRate: parseFloat(e.target.value)
-                        }
-                      });
-                    }}
-                  />
+                  <Label>Métodos de Pago</Label>
+                  <div className="flex gap-4">
+                    {['card', 'transfer'].map((method) => (
+                      <div key={method} className="flex items-center gap-2">
+                        <Switch
+                          checked={localSettings.paymentSettings.paymentMethods.includes(method)}
+                          onCheckedChange={(checked) => {
+                            const methods = checked
+                              ? [...localSettings.paymentSettings.paymentMethods, method]
+                              : localSettings.paymentSettings.paymentMethods.filter((m) => m !== method);
+                            handleInputChange('paymentSettings', {
+                              ...localSettings.paymentSettings,
+                              paymentMethods: methods,
+                            });
+                          }}
+                        />
+                        <Label>{method === 'card' ? 'Tarjeta' : 'Transferencia'}</Label>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             </CardContent>
@@ -940,104 +640,85 @@ export default function AdminSettings() {
         <TabsContent value="branding">
           <Card>
             <CardHeader>
-              <CardTitle>Configuración de Marca</CardTitle>
+              <CardTitle>Marca</CardTitle>
               <CardDescription>
-                Personaliza la apariencia de tu plataforma
+                Configura la apariencia de tu marca
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-6">
+              <div className="space-y-4">
                 <div>
-                  <Label>Nombre de la Empresa</Label>
+                  <Label>Logo</Label>
                   <Input
-                    value={settings.branding.companyName}
-                    onChange={(e) => {
-                      updateSettings({
-                        ...settings,
-                        branding: {
-                          ...settings.branding,
-                          companyName: e.target.value
-                        }
-                      });
-                    }}
+                    value={localSettings.branding.logo}
+                    onChange={(e) =>
+                      handleInputChange('branding', {
+                        ...localSettings.branding,
+                        logo: e.target.value,
+                      })
+                    }
+                    placeholder="URL del logo"
                   />
                 </div>
-
-                <LogoUploader
-                  currentLogo={settings.branding.logo}
-                  onLogoChange={(logo) => {
-                    updateSettings({
-                      ...settings,
-                      branding: {
-                        ...settings.branding,
-                        logo
-                      }
-                    });
-                  }}
-                />
-
+                <div>
+                  <Label>Favicon</Label>
+                  <Input
+                    value={localSettings.branding.favicon}
+                    onChange={(e) =>
+                      handleInputChange('branding', {
+                        ...localSettings.branding,
+                        favicon: e.target.value,
+                      })
+                    }
+                    placeholder="URL del favicon"
+                  />
+                </div>
                 <div>
                   <Label>Color Primario</Label>
-                  <ColorPicker
-                    color={settings.branding.primaryColor}
-                    onChange={(color) => {
-                      updateSettings({
-                        ...settings,
-                        branding: {
-                          ...settings.branding,
-                          primaryColor: color
-                        }
-                      });
-                    }}
+                  <Input
+                    type="color"
+                    value={localSettings.branding.colors.primary}
+                    onChange={(e) =>
+                      handleInputChange('branding', {
+                        ...localSettings.branding,
+                        colors: {
+                          ...localSettings.branding.colors,
+                          primary: e.target.value,
+                        },
+                      })
+                    }
                   />
                 </div>
-
                 <div>
                   <Label>Color Secundario</Label>
-                  <ColorPicker
-                    color={settings.branding.secondaryColor}
-                    onChange={(color) => {
-                      updateSettings({
-                        ...settings,
-                        branding: {
-                          ...settings.branding,
-                          secondaryColor: color
-                        }
-                      });
-                    }}
+                  <Input
+                    type="color"
+                    value={localSettings.branding.colors.secondary}
+                    onChange={(e) =>
+                      handleInputChange('branding', {
+                        ...localSettings.branding,
+                        colors: {
+                          ...localSettings.branding.colors,
+                          secondary: e.target.value,
+                        },
+                      })
+                    }
                   />
                 </div>
-
                 <div>
-                  <Label>Email de Contacto</Label>
+                  <Label>Color de Acento</Label>
                   <Input
-                    type="email"
-                    value={settings.branding.contactEmail}
-                    onChange={(e) => {
-                      updateSettings({
-                        ...settings,
-                        branding: {
-                          ...settings.branding,
-                          contactEmail: e.target.value
-                        }
-                      });
-                    }}
-                  />
-                </div>
-
-                <div>
-                  <Label>Teléfono de Soporte</Label>
-                  <Input
-                    value={settings.branding.supportPhone}
-                    onChange={(e) => {
-                      updateSettings({
-                        ...settings,
-                        branding: {
-                          ...settings.branding,
-                          supportPhone: e.target.value
-                        }
-                      });
-                    }}
+                    type="color"
+                    value={localSettings.branding.colors.accent}
+                    onChange={(e) =>
+                      handleInputChange('branding', {
+                        ...localSettings.branding,
+                        colors: {
+                          ...localSettings.branding.colors,
+                          accent: e.target.value,
+                        },
+                      })
+                    }
                   />
                 </div>
               </div>
