@@ -31,7 +31,7 @@ export interface QuoteCalculationParams {
   category: string;
 }
 
-export interface BaseModel {
+export interface Plan {
   id: string;
   name: string;
   description: string;
@@ -53,14 +53,6 @@ export interface BaseModel {
   created_at: string;
   updated_at: string;
   is_active: boolean;
-}
-
-export interface SystemSettings extends BaseModel {
-  name: string;
-  description: string;
-  countries: string[];
-  priceMultiplier: number;
-  settings_id: string;
 }
 
 export interface Voucher {

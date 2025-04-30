@@ -25,31 +25,29 @@ function DiscountCard({
 }: DiscountCardProps) {
   return (
     <div className={cn(
-      "relative h-full overflow-hidden rounded-xl border border-gray-200 group transition-all duration-300 hover:shadow-md hover:scale-[1.01]",
+      "relative h-full overflow-hidden rounded-xl border border-travel-100 group transition-all duration-300 hover:shadow-lg hover:scale-[1.01]",
       className
     )}>
-      {/* Imagen de fondo con opacidad aumentada */}
       <div className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-105"
            style={{ backgroundImage: `url(${imageSrc})` }} />
-      {/* Gradient más sutil para que se vea mejor la imagen */}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/30 to-black/10" />
+      <div className="absolute inset-0 bg-gradient-to-t from-travel-950/90 via-travel-900/50 to-travel-950/20" />
       <div className="relative h-full flex flex-col justify-end p-6 z-10">
         <div className="mb-auto">
-          <span className="inline-flex items-center rounded-full bg-primary/80 px-2.5 py-1 text-xs font-semibold text-white backdrop-blur-sm">
+          <span className="inline-flex items-center rounded-full bg-primary/90 px-2.5 py-1 text-xs font-semibold text-white backdrop-blur-sm">
             <Percent className="mr-1 h-3 w-3" />
             {discountPercentage}% Off
           </span>
         </div>
         
         <h3 className="text-xl font-semibold text-white mb-2">{title}</h3>
-        <p className="text-white/90 text-sm mb-4">{description}</p>
+        <p className="text-white/80 text-sm mb-4">{description}</p>
         
-        <div className="flex items-center text-white/80 text-xs mb-4">
+        <div className="flex items-center text-white/70 text-xs mb-4">
           <Clock className="h-3 w-3 mr-1" />
           <span>Expira: {validUntil}</span>
         </div>
         
-        <Button variant="outline" className="bg-black/20 backdrop-blur-sm text-white border-white/30 hover:bg-white/20 hover:text-white">
+        <Button variant="outline" className="bg-travel-100/10 backdrop-blur-sm text-white border-white/20 hover:bg-white/20 hover:text-white">
           Ver oferta
         </Button>
       </div>

@@ -14,8 +14,6 @@ import { useState } from 'react';
 import { cn } from '@/lib/utils';
 
 export function AdminNavbar() {
-  // Ya no renderizamos este componente para evitar duplicación con el otro AdminNavbar
-  return null;
   const location = useLocation();
   const { logout } = useAuth();
   const [isMenuOpen, setIsMenuOpen] = useState(false);

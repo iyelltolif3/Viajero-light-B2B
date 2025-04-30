@@ -1,356 +1,316 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { useSettingsStore } from '@/store/settingsStore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Card } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
+import { GripVertical, Trash2, Save } from 'lucide-react';
+import type { DiscountItem } from '@/types/content';
 import { useToast } from '@/components/ui/use-toast';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import type { DiscountItem, DiscountSection } from '@/types/content';
-import { DatePicker } from '@/components/ui/date-picker';
-import { ContentService } from '@/services/contentService';
-import { supabase } from '@/lib/supabase';
-
-const generateUUID = () => {
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-    const r = Math.random() * 16 | 0;
-    const v = c === 'x' ? r : (r & 0x3 | 0x8);
-    return v.toString(16);
-  });
-};
 
 export default function ContentSettings() {
-  const { content, updateContent } = useSettingsStore();
+  const { content, updateContent, initializeContent, saveContent } = useSettingsStore();
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState('general');
-  const [loading, setLoading] = useState(false);
+  const { discountSection } = content;
 
-  const discountSection = content?.discountSection || {
-    sectionTitle: '',
-    sectionSubtitle: '',
-    badgeText: '',
-    viewAllButtonText: '',
-    discounts: []
-  };
+  useEffect(() => {
+    initializeContent().catch(console.error);
+  }, [initializeContent]);
 
-  const handleSectionUpdate = (field: keyof DiscountSection, value: string) => {
+  const handleSectionTextChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
+    field: keyof typeof discountSection
+  ) => {
     updateContent({
       discountSection: {
         ...discountSection,
-        [field]: value
-      }
+        [field]: e.target.value,
+      },
     });
   };
 
-  const addNewDiscount = () => {
-    const newDiscount: DiscountItem = {
-      id: generateUUID(),
-      title: "Nueva Oferta",
-      description: "Descripción de la nueva oferta",
-      discountPercentage: 10,
-      code: "NEWDISCOUNT",
-      expiryDate: new Date().toISOString(),
-      imageSrc: "https://images.unsplash.com/photo-1465146344425-f00d5f5c8f07?auto=format&fit=crop&q=80",
-      active: true,
-      order: discountSection.discounts.length + 1,
-      validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
-    };
-
-    updateContent({
-      discountSection: {
-        ...discountSection,
-        discounts: [...discountSection.discounts, newDiscount]
-      }
-    });
-
-    toast({
-      title: "Descuento agregado",
-      description: "Se ha agregado un nuevo descuento. No olvides guardar los cambios."
-    });
-  };
-
-  const updateDiscount = (id: string, updates: Partial<DiscountItem>) => {
-    const updatedDiscounts = discountSection.discounts.map(discount =>
-      discount.id === id ? { ...discount, ...updates } : discount
+  const handleDiscountChange = (
+    id: string,
+    field: keyof DiscountItem,
+    value: string | boolean
+  ) => {
+    const updatedDiscounts = discountSection.discounts.map((discount) =>
+      discount.id === id ? { ...discount, [field]: value } : discount
     );
 
     updateContent({
       discountSection: {
         ...discountSection,
-        discounts: updatedDiscounts
-      }
+        discounts: updatedDiscounts,
+      },
+    });
+  };
+
+  const handleDragEnd = (result: any) => {
+    if (!result.destination) return;
+
+    const items = Array.from(discountSection.discounts);
+    const [reorderedItem] = items.splice(result.source.index, 1);
+    items.splice(result.destination.index, 0, reorderedItem);
+
+    // Update order numbers
+    const updatedItems = items.map((item, index) => ({
+      ...item,
+      order: index + 1,
+    }));
+
+    updateContent({
+      discountSection: {
+        ...discountSection,
+        discounts: updatedItems,
+      },
     });
   };
 
   const deleteDiscount = (id: string) => {
-    const updatedDiscounts = discountSection.discounts.filter(discount => discount.id !== id);
-    
+    const updatedDiscounts = discountSection.discounts.filter(
+      (discount) => discount.id !== id
+    );
+
     updateContent({
       discountSection: {
         ...discountSection,
-        discounts: updatedDiscounts
-      }
-    });
-
-    toast({
-      title: "Descuento eliminado",
-      description: "Se ha eliminado el descuento. No olvides guardar los cambios."
+        discounts: updatedDiscounts,
+      },
     });
   };
 
-  // Función de depuración para diagnosticar problemas
-  const debugContent = async () => {
-    try {
-      // Verificar la estructura actual de la tabla
-      const { data, error } = await supabase
-        .from('system_content')
-        .select('*')
-        .single();
+  const addNewDiscount = () => {
+    const newDiscount: DiscountItem = {
+      id: Date.now().toString(),
+      title: "Nueva Oferta",
+      description: "Descripción de la nueva oferta",
+      discount: "10%",
+      expiryDate: "Por definir",
+      imageSrc: "https://images.unsplash.com/photo-1465146344425-f00d5f5c8f07?auto=format&fit=crop&q=80",
+      active: true,
+      order: discountSection.discounts.length + 1,
+    };
 
-      if (error) {
-        console.error('Error al consultar contenido:', error);
-        toast({
-          title: "Error de diagnóstico",
-          description: `Error al consultar: ${error.message}`,
-          variant: "destructive"
-        });
-        return;
-      }
-
-      console.log('Estructura actual en la BD:', data);
-      console.log('Estructura local:', discountSection);
-      
-      // Mostrar información de diagnóstico
-      toast({
-        title: "Diagnóstico completado",
-        description: "Revisa la consola para ver detalles estructurales"
-      });
-    } catch (e) {
-      console.error('Error en diagnóstico:', e);
-    }
+    updateContent({
+      discountSection: {
+        ...discountSection,
+        discounts: [...discountSection.discounts, newDiscount],
+      },
+    });
   };
 
   const handleSave = async () => {
     try {
-      setLoading(true);
-      console.log('Guardando sección de descuentos:', discountSection);
-      
-      // Primero obtenemos la estructura actual para saber exactamente qué columnas existen
-      const { data: currentData, error: fetchError } = await supabase
-        .from('system_content')
-        .select('*')
-        .single();
-        
-      if (fetchError) {
-        throw new Error(`Error al obtener estructura actual: ${fetchError.message}`);
-      }
-      
-      console.log('Estructura actual de la tabla:', currentData);
-      
-      // Transformamos los datos para mantener consistencia
-      const transformedDiscounts = discountSection.discounts.map(discount => ({
-        id: discount.id,
-        title: discount.title,
-        description: discount.description,
-        discountPercentage: discount.discountPercentage || discount.discount || 0,
-        code: discount.code,
-        validUntil: discount.validUntil,
-        imageSrc: discount.imageSrc || '',
-        active: discount.active,
-        order: discount.order
-      }));
-
-      const transformedSection = {
-        sectionTitle: discountSection.sectionTitle,
-        sectionSubtitle: discountSection.sectionSubtitle,
-        badgeText: discountSection.badgeText,
-        viewAllButtonText: discountSection.viewAllButtonText,
-        discounts: transformedDiscounts
-      };
-      
-      // Actualizamos los datos usando exactamente la misma estructura que vimos en la consulta
-      const updateData = {};
-      
-      // Si la columna se llama 'discountSection' o 'discount_section' o simplemente usamos la primera propiedad que contenga 'discount'
-      const discountColumnName = Object.keys(currentData).find(key => 
-        key.toLowerCase().includes('discount') || key.toLowerCase().includes('content')
-      );
-      
-      if (!discountColumnName) {
-        throw new Error('No se pudo encontrar la columna para almacenar los descuentos');
-      }
-      
-      console.log(`Columna encontrada para los descuentos: ${discountColumnName}`);
-      updateData[discountColumnName] = transformedSection;
-
-      // Usamos el id que encontramos en los datos actuales, no un id hardcodeado
-      if (!currentData.id) {
-        throw new Error('No se pudo encontrar el ID del registro de contenido');
-      }
-      
-      console.log(`Actualizando registro con ID: ${currentData.id}`);
-      
-      const { error: directError } = await supabase
-        .from('system_content')
-        .update(updateData)
-        .eq('id', currentData.id);
-        
-      if (directError) {
-        throw new Error(`Error directo de Supabase: ${directError.message}`);
-      }
-
+      await saveContent();
       toast({
         title: "Cambios guardados",
-        description: "Los cambios se han guardado correctamente."
+        description: "Los cambios se han guardado correctamente en la base de datos.",
       });
     } catch (error) {
-      console.error('Error al guardar:', error);
       toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "No se pudieron guardar los cambios. Intenta de nuevo.",
-        variant: "destructive"
+        title: "Error al guardar",
+        description: "Hubo un error al guardar los cambios. Por favor, intente nuevamente.",
+        variant: "destructive",
       });
-    } finally {
-      setLoading(false);
     }
   };
 
   return (
     <div className="container mx-auto py-8">
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList>
-          <TabsTrigger value="general">General</TabsTrigger>
-          <TabsTrigger value="discounts">Descuentos</TabsTrigger>
-        </TabsList>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold">Configuración de Contenido</h1>
+        <Button onClick={handleSave} className="bg-primary hover:bg-primary/90">
+          <Save className="h-4 w-4 mr-2" />
+          Guardar Cambios
+        </Button>
+      </div>
 
-        <TabsContent value="general" className="space-y-6">
-          <Card className="p-6">
-            <h2 className="text-2xl font-bold mb-4">Configuración General</h2>
+      <div className="space-y-6">
+        {/* Sección de Descuentos */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Sección de Descuentos</CardTitle>
+            <CardDescription>
+              Configura los textos y ofertas que aparecen en la sección de descuentos
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Textos principales */}
             <div className="space-y-4">
               <div>
-                <Label>Título de la sección</Label>
+                <Label>Título de la Sección</Label>
                 <Input
                   value={discountSection.sectionTitle}
-                  onChange={(e) => handleSectionUpdate('sectionTitle', e.target.value)}
-                  placeholder="Ej: Descuentos Especiales"
+                  onChange={(e) => handleSectionTextChange(e, 'sectionTitle')}
                 />
               </div>
               <div>
                 <Label>Subtítulo</Label>
-                <Input
+                <Textarea
                   value={discountSection.sectionSubtitle}
-                  onChange={(e) => handleSectionUpdate('sectionSubtitle', e.target.value)}
-                  placeholder="Ej: Aprovecha nuestras ofertas exclusivas"
+                  onChange={(e) => handleSectionTextChange(e, 'sectionSubtitle')}
                 />
               </div>
               <div>
-                <Label>Texto de la insignia</Label>
+                <Label>Texto del Badge</Label>
                 <Input
                   value={discountSection.badgeText}
-                  onChange={(e) => handleSectionUpdate('badgeText', e.target.value)}
-                  placeholder="Ej: Oferta"
+                  onChange={(e) => handleSectionTextChange(e, 'badgeText')}
                 />
               </div>
               <div>
-                <Label>Texto del botón Ver Todos</Label>
+                <Label>Texto del Botón "Ver Todas"</Label>
                 <Input
                   value={discountSection.viewAllButtonText}
-                  onChange={(e) => handleSectionUpdate('viewAllButtonText', e.target.value)}
-                  placeholder="Ej: Ver todas las ofertas"
+                  onChange={(e) => handleSectionTextChange(e, 'viewAllButtonText')}
                 />
               </div>
             </div>
-          </Card>
-        </TabsContent>
 
-        <TabsContent value="discounts" className="space-y-6">
-          <Card className="p-6">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-2xl font-bold">Descuentos</h2>
-              <Button onClick={addNewDiscount}>Agregar Descuento</Button>
-            </div>
-            <div className="space-y-6">
-              {discountSection.discounts.map((discount) => (
-                <Card key={discount.id} className="p-4 border">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label>Título</Label>
-                      <Input
-                        value={discount.title}
-                        onChange={(e) => updateDiscount(discount.id, { title: e.target.value })}
-                      />
-                    </div>
-                    <div>
-                      <Label>Código</Label>
-                      <Input
-                        value={discount.code}
-                        onChange={(e) => updateDiscount(discount.id, { code: e.target.value })}
-                      />
-                    </div>
-                    <div>
-                      <Label>Descripción</Label>
-                      <Textarea
-                        value={discount.description}
-                        onChange={(e) => updateDiscount(discount.id, { description: e.target.value })}
-                      />
-                    </div>
-                    <div>
-                      <Label>URL de la imagen</Label>
-                      <Input
-                        value={discount.imageSrc}
-                        onChange={(e) => updateDiscount(discount.id, { imageSrc: e.target.value })}
-                      />
-                    </div>
-                    <div>
-                      <Label>Descuento (%)</Label>
-                      <Input
-                        type="number"
-                        value={discount.discountPercentage || discount.discount}
-                        onChange={(e) => updateDiscount(discount.id, { 
-                          discountPercentage: Number(e.target.value),
-                          discount: Number(e.target.value) // Actualizar ambos por compatibilidad
-                        })}
-                      />
-                    </div>
-                    <div>
-                      <Label>Válido hasta</Label>
-                      <DatePicker
-                        date={new Date(discount.validUntil)}
-                        onSelect={(date) => updateDiscount(discount.id, { validUntil: date.toISOString() })}
-                      />
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Switch
-                        checked={discount.active}
-                        onCheckedChange={(checked) => updateDiscount(discount.id, { active: checked })}
-                      />
-                      <Label>Activo</Label>
-                    </div>
-                    <div className="flex items-end">
-                      <Button
-                        variant="destructive"
-                        onClick={() => deleteDiscount(discount.id)}
-                      >
-                        Eliminar
-                      </Button>
-                    </div>
-                  </div>
-                </Card>
-              ))}
-            </div>
-          </Card>
-        </TabsContent>
-      </Tabs>
+            {/* Lista de Descuentos */}
+            <div>
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-semibold">Ofertas</h3>
+                <Button onClick={addNewDiscount}>Agregar Oferta</Button>
+              </div>
 
-      <div className="mt-6 flex justify-end gap-4">
-        <Button variant="outline" onClick={debugContent} type="button">
-          Diagnosticar
-        </Button>
-        <Button onClick={handleSave} disabled={loading}>
-          {loading ? 'Guardando...' : 'Guardar Cambios'}
-        </Button>
+              <DragDropContext onDragEnd={handleDragEnd}>
+                <Droppable droppableId="discounts">
+                  {(provided) => (
+                    <div
+                      {...provided.droppableProps}
+                      ref={provided.innerRef}
+                      className="space-y-4"
+                    >
+                      {discountSection.discounts.map((discount, index) => (
+                        <Draggable
+                          key={discount.id}
+                          draggableId={discount.id}
+                          index={index}
+                        >
+                          {(provided) => (
+                            <Card
+                              ref={provided.innerRef}
+                              {...provided.draggableProps}
+                              className="border p-4"
+                            >
+                              <div className="flex items-start gap-4">
+                                <div
+                                  {...provided.dragHandleProps}
+                                  className="mt-2 cursor-move"
+                                >
+                                  <GripVertical className="h-5 w-5 text-gray-400" />
+                                </div>
+                                <div className="flex-1 space-y-4">
+                                  <div className="flex items-center justify-between">
+                                    <Input
+                                      value={discount.title}
+                                      onChange={(e) =>
+                                        handleDiscountChange(
+                                          discount.id,
+                                          'title',
+                                          e.target.value
+                                        )
+                                      }
+                                      className="w-full"
+                                      placeholder="Título de la oferta"
+                                    />
+                                    <div className="flex items-center gap-4 ml-4">
+                                      <div className="flex items-center gap-2">
+                                        <Switch
+                                          checked={discount.active}
+                                          onCheckedChange={(checked) =>
+                                            handleDiscountChange(
+                                              discount.id,
+                                              'active',
+                                              checked
+                                            )
+                                          }
+                                        />
+                                        <Label>Activo</Label>
+                                      </div>
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        onClick={() => deleteDiscount(discount.id)}
+                                      >
+                                        <Trash2 className="h-4 w-4 text-red-500" />
+                                      </Button>
+                                    </div>
+                                  </div>
+                                  <Textarea
+                                    value={discount.description}
+                                    onChange={(e) =>
+                                      handleDiscountChange(
+                                        discount.id,
+                                        'description',
+                                        e.target.value
+                                      )
+                                    }
+                                    placeholder="Descripción de la oferta"
+                                  />
+                                  <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                      <Label>Descuento</Label>
+                                      <Input
+                                        value={discount.discount}
+                                        onChange={(e) =>
+                                          handleDiscountChange(
+                                            discount.id,
+                                            'discount',
+                                            e.target.value
+                                          )
+                                        }
+                                        placeholder="ej: 25%"
+                                      />
+                                    </div>
+                                    <div>
+                                      <Label>Fecha de Expiración</Label>
+                                      <Input
+                                        value={discount.expiryDate}
+                                        onChange={(e) =>
+                                          handleDiscountChange(
+                                            discount.id,
+                                            'expiryDate',
+                                            e.target.value
+                                          )
+                                        }
+                                        placeholder="ej: 31 de Diciembre, 2023"
+                                      />
+                                    </div>
+                                  </div>
+                                  <div>
+                                    <Label>URL de la Imagen</Label>
+                                    <Input
+                                      value={discount.imageSrc}
+                                      onChange={(e) =>
+                                        handleDiscountChange(
+                                          discount.id,
+                                          'imageSrc',
+                                          e.target.value
+                                        )
+                                      }
+                                      placeholder="URL de la imagen"
+                                    />
+                                  </div>
+                                </div>
+                              </div>
+                            </Card>
+                          )}
+                        </Draggable>
+                      ))}
+                      {provided.placeholder}
+                    </div>
+                  )}
+                </Droppable>
+              </DragDropContext>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

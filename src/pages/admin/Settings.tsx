@@ -76,24 +76,8 @@ export default function AdminSettings() {
     );
   }
 
-  // Mostrar loading mientras se cargan los datos
-  if (isLoading) {
-    return (
-      <div className="container mx-auto py-8 px-4">
-        <Card>
-          <CardHeader>
-            <CardTitle>Cargando configuración...</CardTitle>
-            <CardDescription>
-              Por favor espere mientras se cargan los datos del sistema.
-            </CardDescription>
-          </CardHeader>
-        </Card>
-      </div>
-    );
-  }
-
   // Si no hay configuración, mostrar opción para inicializar
-  if (!localSettings) {
+  if (!settings) {
     return (
       <div className="container mx-auto py-8 px-4">
         <Card>
@@ -144,7 +128,6 @@ export default function AdminSettings() {
                   ageRanges: [],
                   emergencyContacts: []
                 });
-                saveSettings();
               }}
             >
               <Plus className="h-4 w-4 mr-2" />
@@ -157,7 +140,18 @@ export default function AdminSettings() {
   }
 
   const handleAddPlan = async () => {
+  const handleSave = () => {
+    toast({
+      title: "Configuración guardada",
+      description: "Los cambios han sido aplicados exitosamente.",
+    });
+  };
+
+  const selectedPlan = plans?.find(p => p.id === selectedPlanId);
+
+  const handleAddPlan = () => {
     const newPlan = {
+      id: Date.now().toString(),
       name: 'Nuevo Plan',
       description: 'Descripción del nuevo plan',
       price: 0,
@@ -990,4 +984,4 @@ export default function AdminSettings() {
       </Tabs>
     </div>
   );
-}
+} 
