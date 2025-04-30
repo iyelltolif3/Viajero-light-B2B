@@ -1,30 +1,53 @@
 import { create } from 'zustand';
 import type { AdminSettings } from '@/types';
+import type { ContentSettings } from '@/types/content';
 import { supabase } from '@/lib/supabase';
 import { toast } from '@/components/ui/use-toast';
+import { ContentService } from '@/services/contentService';
 
 interface SettingsState {
   settings: AdminSettings | null;
+  content: ContentSettings | null;
   localSettings: AdminSettings | null;
   isLoading: boolean;
   error: string | null;
   hasUnsavedChanges: boolean;
   fetchSettings: () => Promise<void>;
   updateLocalSettings: (newSettings: Partial<AdminSettings>) => void;
+  updateContent: (newContent: Partial<ContentSettings>) => void;
   saveSettings: () => Promise<void>;
   discardChanges: () => void;
 }
 
 export const useSettingsStore = create<SettingsState>((set, get) => ({
   settings: null,
+  content: null,
   localSettings: null,
-  isLoading: true,
+  isLoading: false,
   error: null,
   hasUnsavedChanges: false,
 
   fetchSettings: async () => {
     try {
       set({ isLoading: true, error: null });
+
+      // Verificar la conexión primero
+      const { error: connectionError } = await supabase
+        .from('system_settings')
+        .select('count')
+        .single();
+
+      if (connectionError) {
+        if (connectionError.code === 'PGRST116') {
+          // No data found, this is okay
+        } else if (connectionError.code === 'PGRST401') {
+          throw new Error('Error de autenticación. Por favor, verifique las credenciales.');
+        } else if (connectionError.message?.includes('network')) {
+          throw new Error('Error de conexión. Por favor, verifique su conexión a internet y las configuraciones de Supabase.');
+        } else {
+          throw connectionError;
+        }
+      }
 
       // Obtener la configuración del sistema
       const { data: settingsData, error: settingsError } = await supabase
@@ -42,7 +65,12 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
         .select('*')
         .order('name');
 
-      if (zonesError) throw zonesError;
+      if (zonesError) {
+        if (zonesError.code === 'PGRST401') {
+          throw new Error('Error de autenticación al acceder a las zonas.');
+        }
+        throw zonesError;
+      }
 
       // Obtener los rangos de edad
       const { data: ageRangesData, error: ageRangesError } = await supabase
@@ -50,7 +78,12 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
         .select('*')
         .order('"minAge"');
 
-      if (ageRangesError) throw ageRangesError;
+      if (ageRangesError) {
+        if (ageRangesError.code === 'PGRST401') {
+          throw new Error('Error de autenticación al acceder a los rangos de edad.');
+        }
+        throw ageRangesError;
+      }
 
       // Obtener los contactos de emergencia
       const { data: emergencyContactsData, error: emergencyContactsError } = await supabase
@@ -59,12 +92,21 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
         .eq('"isActive"', true)
         .order('priority');
 
-      if (emergencyContactsError) throw emergencyContactsError;
+      if (emergencyContactsError) {
+        if (emergencyContactsError.code === 'PGRST401') {
+          throw new Error('Error de autenticación al acceder a los contactos de emergencia.');
+        }
+        throw emergencyContactsError;
+      }
+
+      // Obtener el contenido
+      const content = await ContentService.getContent();
 
       // Si no hay configuración, retornar null
       if (!settingsData) {
         set({
           settings: null,
+          content: content || null,
           localSettings: null,
           isLoading: false,
           error: null,
@@ -83,6 +125,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
 
       set({
         settings,
+        content: content || null,
         localSettings: settings,
         isLoading: false,
         error: null,
@@ -91,13 +134,14 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
 
     } catch (error: any) {
       console.error('Error fetching settings:', error);
+      const errorMessage = error.message || 'Error al cargar la configuración del sistema';
       set({
         isLoading: false,
-        error: error.message || 'Error al cargar la configuración del sistema',
+        error: errorMessage,
       });
       toast({
         title: "Error",
-        description: "No se pudo cargar la configuración del sistema",
+        description: errorMessage,
         variant: "destructive",
       });
     }
@@ -105,7 +149,14 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
 
   updateLocalSettings: (newSettings) => {
     const currentLocalSettings = get().localSettings;
-    if (!currentLocalSettings) return;
+    if (!currentLocalSettings) {
+      // Si no hay configuración local, crear una nueva
+      set({
+        localSettings: newSettings as AdminSettings,
+        hasUnsavedChanges: true,
+      });
+      return;
+    }
 
     const updatedSettings = {
       ...currentLocalSettings,
@@ -118,11 +169,17 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     });
   },
 
-  saveSettings: async () => {
-    try {
-      const { localSettings } = get();
-      if (!localSettings) return;
+  updateContent: (newContent) => {
+    const { content } = get();
+    set({
+      content: { ...content, ...newContent },
+      hasUnsavedChanges: true
+    });
+  },
 
+  saveSettings: async () => {
+    const { localSettings, content } = get();
+    try {
       set({ isLoading: true, error: null });
 
       // Si no hay configuración previa, crear una nueva
@@ -188,13 +245,21 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
         const { error: zonesError } = await supabase
           .from('zones')
           .upsert(
-            localSettings.zones.map(zone => ({
-              ...zone,
-              settingsId: localSettings.id,
+            localSettings.zones.map(({ id, name, priceMultiplier, countries }) => ({
+              id,
+              settings_id: localSettings.id,
+              name,
+              priceMultiplier,
+              countries,
             }))
           );
 
-        if (zonesError) throw zonesError;
+        if (zonesError) {
+          if (zonesError.code === 'PGRST401') {
+            throw new Error('Error de autenticación al actualizar las zonas.');
+          }
+          throw zonesError;
+        }
       }
 
       // Si hay rangos de edad nuevos, actualizarlos
@@ -202,31 +267,50 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
         const { error: ageRangesError } = await supabase
           .from('age_ranges')
           .upsert(
-            localSettings.ageRanges.map(range => ({
-              ...range,
-              minAge: range.minAge,
-              maxAge: range.maxAge,
-              priceMultiplier: range.priceMultiplier,
-              settingsId: localSettings.id,
+            localSettings.ageRanges.map(({ id, settings_id, minAge, maxAge, priceMultiplier }) => ({
+              id,
+              settings_id: localSettings.id,
+              minAge,
+              maxAge,
+              priceMultiplier,
             }))
           );
 
-        if (ageRangesError) throw ageRangesError;
+        if (ageRangesError) {
+          if (ageRangesError.code === 'PGRST401') {
+            throw new Error('Error de autenticación al actualizar los rangos de edad.');
+          }
+          throw ageRangesError;
+        }
       }
 
       // Si hay contactos de emergencia nuevos, actualizarlos
       if (localSettings.emergencyContacts) {
-        const { error: contactsError } = await supabase
+        const { error: emergencyContactsError } = await supabase
           .from('emergency_contacts')
           .upsert(
-            localSettings.emergencyContacts.map(contact => ({
-              ...contact,
-              isActive: contact.isActive,
-              settingsId: localSettings.id,
+            localSettings.emergencyContacts.map(({ id,  name, phone, email, country, priority }) => ({
+              id,
+              settings_id: localSettings.id,
+              name,
+              phone,
+              email,
+              country,
+              priority,
             }))
           );
 
-        if (contactsError) throw contactsError;
+        if (emergencyContactsError) {
+          if (emergencyContactsError.code === 'PGRST401') {
+            throw new Error('Error de autenticación al actualizar los contactos de emergencia.');
+          }
+          throw emergencyContactsError;
+        }
+      }
+
+      // Actualizar el contenido
+      if (content) {
+        await ContentService.updateDiscountSection(content.discountSection);
       }
 
       // Actualizar el estado con los cambios guardados
@@ -243,13 +327,14 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
 
     } catch (error: any) {
       console.error('Error updating settings:', error);
+      const errorMessage = error.message || 'Error al actualizar la configuración';
       set({
         isLoading: false,
-        error: error.message || 'Error al actualizar la configuración',
+        error: errorMessage,
       });
       toast({
         title: "Error",
-        description: "No se pudo actualizar la configuración",
+        description: errorMessage,
         variant: "destructive",
       });
     }
@@ -265,5 +350,5 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       title: "Cambios descartados",
       description: "Se han restaurado los valores anteriores",
     });
-  },
+  }
 }));

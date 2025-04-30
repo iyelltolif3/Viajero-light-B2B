@@ -1,7 +1,7 @@
 export interface BaseModel {
   id: string;
-  createdAt: string;
-  updatedAt: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface AdminSettings extends BaseModel {
@@ -32,14 +32,12 @@ export interface AdminSettings extends BaseModel {
 }
 
 export interface EmergencyContact extends BaseModel {
-  settingsId: string;
+  settings_id: string;
   name: string;
   phone: string;
   email: string;
   country: string;
-  address: string;
   priority: number;
-  isActive: boolean;
 }
 
 export interface NotificationSettings {
@@ -56,20 +54,18 @@ export interface PaymentSettings {
 }
 
 export interface Zone extends BaseModel {
-  settingsId: string;
   name: string;
-  priceMultiplier: number;
+  description: string;
   countries: string[];
-  riskLevel: 'low' | 'medium' | 'high';
-  isActive: boolean;
+  price_multiplier: number;
+  settings_id: string;
 }
 
 export interface AgeRange extends BaseModel {
-  settingsId: string;
   minAge: number;
   maxAge: number;
   priceMultiplier: number;
-  isActive: boolean;
+  settings_id: string;
 }
 
 export interface ContentSettings extends BaseModel {

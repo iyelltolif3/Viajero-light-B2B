@@ -1,31 +1,19 @@
-import React, { useEffect, useState } from 'react';
-import { useSettingsStore } from '@/store/settingsStore';
+import React, { useState } from 'react';
+import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Card } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { useToast } from '@/components/ui/use-toast';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import type { DiscountItem, DiscountSection } from '@/types/content';
 import { DatePicker } from '@/components/ui/date-picker';
-import { ContentService } from '@/services/contentService';
-import { supabase } from '@/lib/supabase';
+import { useSettingsStore } from '@/store/settingsStore';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { generateUUID } from '@/lib/utils';
+import type { DiscountItem } from '@/types/content';
 
-const generateUUID = () => {
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-    const r = Math.random() * 16 | 0;
-    const v = c === 'x' ? r : (r & 0x3 | 0x8);
-    return v.toString(16);
-  });
-};
-
-export default function ContentSettings() {
+export function DiscountSection() {
   const { content, updateContent } = useSettingsStore();
-  const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('general');
-  const [loading, setLoading] = useState(false);
 
   const discountSection = content?.discountSection || {
     sectionTitle: '',
@@ -35,7 +23,7 @@ export default function ContentSettings() {
     discounts: []
   };
 
-  const handleSectionUpdate = (field: keyof DiscountSection, value: string) => {
+  const handleSectionUpdate = (field: string, value: string) => {
     updateContent({
       discountSection: {
         ...discountSection,
@@ -49,7 +37,8 @@ export default function ContentSettings() {
       id: generateUUID(),
       title: "Nueva Oferta",
       description: "Descripción de la nueva oferta",
-      discountPercentage: 10,
+      discount: 10, // Mantenemos por compatibilidad
+      discountPercentage: 10, // Agregamos el campo requerido
       code: "NEWDISCOUNT",
       expiryDate: new Date().toISOString(),
       imageSrc: "https://images.unsplash.com/photo-1465146344425-f00d5f5c8f07?auto=format&fit=crop&q=80",
@@ -63,11 +52,6 @@ export default function ContentSettings() {
         ...discountSection,
         discounts: [...discountSection.discounts, newDiscount]
       }
-    });
-
-    toast({
-      title: "Descuento agregado",
-      description: "Se ha agregado un nuevo descuento. No olvides guardar los cambios."
     });
   };
 
@@ -93,139 +77,17 @@ export default function ContentSettings() {
         discounts: updatedDiscounts
       }
     });
-
-    toast({
-      title: "Descuento eliminado",
-      description: "Se ha eliminado el descuento. No olvides guardar los cambios."
-    });
-  };
-
-  // Función de depuración para diagnosticar problemas
-  const debugContent = async () => {
-    try {
-      // Verificar la estructura actual de la tabla
-      const { data, error } = await supabase
-        .from('system_content')
-        .select('*')
-        .single();
-
-      if (error) {
-        console.error('Error al consultar contenido:', error);
-        toast({
-          title: "Error de diagnóstico",
-          description: `Error al consultar: ${error.message}`,
-          variant: "destructive"
-        });
-        return;
-      }
-
-      console.log('Estructura actual en la BD:', data);
-      console.log('Estructura local:', discountSection);
-      
-      // Mostrar información de diagnóstico
-      toast({
-        title: "Diagnóstico completado",
-        description: "Revisa la consola para ver detalles estructurales"
-      });
-    } catch (e) {
-      console.error('Error en diagnóstico:', e);
-    }
-  };
-
-  const handleSave = async () => {
-    try {
-      setLoading(true);
-      console.log('Guardando sección de descuentos:', discountSection);
-      
-      // Primero obtenemos la estructura actual para saber exactamente qué columnas existen
-      const { data: currentData, error: fetchError } = await supabase
-        .from('system_content')
-        .select('*')
-        .single();
-        
-      if (fetchError) {
-        throw new Error(`Error al obtener estructura actual: ${fetchError.message}`);
-      }
-      
-      console.log('Estructura actual de la tabla:', currentData);
-      
-      // Transformamos los datos para mantener consistencia
-      const transformedDiscounts = discountSection.discounts.map(discount => ({
-        id: discount.id,
-        title: discount.title,
-        description: discount.description,
-        discountPercentage: discount.discountPercentage || discount.discount || 0,
-        code: discount.code,
-        validUntil: discount.validUntil,
-        imageSrc: discount.imageSrc || '',
-        active: discount.active,
-        order: discount.order
-      }));
-
-      const transformedSection = {
-        sectionTitle: discountSection.sectionTitle,
-        sectionSubtitle: discountSection.sectionSubtitle,
-        badgeText: discountSection.badgeText,
-        viewAllButtonText: discountSection.viewAllButtonText,
-        discounts: transformedDiscounts
-      };
-      
-      // Actualizamos los datos usando exactamente la misma estructura que vimos en la consulta
-      const updateData = {};
-      
-      // Si la columna se llama 'discountSection' o 'discount_section' o simplemente usamos la primera propiedad que contenga 'discount'
-      const discountColumnName = Object.keys(currentData).find(key => 
-        key.toLowerCase().includes('discount') || key.toLowerCase().includes('content')
-      );
-      
-      if (!discountColumnName) {
-        throw new Error('No se pudo encontrar la columna para almacenar los descuentos');
-      }
-      
-      console.log(`Columna encontrada para los descuentos: ${discountColumnName}`);
-      updateData[discountColumnName] = transformedSection;
-
-      // Usamos el id que encontramos en los datos actuales, no un id hardcodeado
-      if (!currentData.id) {
-        throw new Error('No se pudo encontrar el ID del registro de contenido');
-      }
-      
-      console.log(`Actualizando registro con ID: ${currentData.id}`);
-      
-      const { error: directError } = await supabase
-        .from('system_content')
-        .update(updateData)
-        .eq('id', currentData.id);
-        
-      if (directError) {
-        throw new Error(`Error directo de Supabase: ${directError.message}`);
-      }
-
-      toast({
-        title: "Cambios guardados",
-        description: "Los cambios se han guardado correctamente."
-      });
-    } catch (error) {
-      console.error('Error al guardar:', error);
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "No se pudieron guardar los cambios. Intenta de nuevo.",
-        variant: "destructive"
-      });
-    } finally {
-      setLoading(false);
-    }
   };
 
   return (
-    <div className="container mx-auto py-8">
+    <div className="space-y-6">
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
           <TabsTrigger value="general">General</TabsTrigger>
           <TabsTrigger value="discounts">Descuentos</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="general" className="space-y-6">
+        <TabsContent value="general">
           <Card className="p-6">
             <h2 className="text-2xl font-bold mb-4">Configuración General</h2>
             <div className="space-y-4">
@@ -265,7 +127,7 @@ export default function ContentSettings() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="discounts" className="space-y-6">
+        <TabsContent value="discounts">
           <Card className="p-6">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-2xl font-bold">Descuentos</h2>
@@ -307,11 +169,8 @@ export default function ContentSettings() {
                       <Label>Descuento (%)</Label>
                       <Input
                         type="number"
-                        value={discount.discountPercentage || discount.discount}
-                        onChange={(e) => updateDiscount(discount.id, { 
-                          discountPercentage: Number(e.target.value),
-                          discount: Number(e.target.value) // Actualizar ambos por compatibilidad
-                        })}
+                        value={discount.discount}
+                        onChange={(e) => updateDiscount(discount.id, { discount: Number(e.target.value) })}
                       />
                     </div>
                     <div>
@@ -343,15 +202,6 @@ export default function ContentSettings() {
           </Card>
         </TabsContent>
       </Tabs>
-
-      <div className="mt-6 flex justify-end gap-4">
-        <Button variant="outline" onClick={debugContent} type="button">
-          Diagnosticar
-        </Button>
-        <Button onClick={handleSave} disabled={loading}>
-          {loading ? 'Guardando...' : 'Guardar Cambios'}
-        </Button>
-      </div>
     </div>
   );
 }

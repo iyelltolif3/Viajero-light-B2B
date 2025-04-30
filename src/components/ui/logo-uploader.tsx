@@ -38,33 +38,19 @@ export function LogoUploader({ currentLogo, onLogoChange }: LogoUploaderProps) {
       return;
     }
 
-    // Validar dimensiones
-    const img = new Image();
-    const objectUrl = URL.createObjectURL(file);
-    
-    img.onload = () => {
-      URL.revokeObjectURL(objectUrl);
+    // Convertir directamente a base64 sin validar dimensiones
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64String = reader.result as string;
+      setPreview(base64String);
+      onLogoChange(base64String);
       
-      if (img.width > 1000 || img.height > 1000) {
-        toast({
-          title: "Dimensiones no válidas",
-          description: "La imagen no debe exceder 1000x1000 píxeles.",
-          variant: "destructive"
-        });
-        return;
-      }
-
-      // Convertir a base64
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const base64String = reader.result as string;
-        setPreview(base64String);
-        onLogoChange(base64String);
-      };
-      reader.readAsDataURL(file);
+      toast({
+        title: "Logo cargado",
+        description: "La imagen del logo se ha cargado correctamente.",
+      });
     };
-
-    img.src = objectUrl;
+    reader.readAsDataURL(file);
   };
 
   const handleRemoveLogo = () => {
@@ -117,7 +103,7 @@ export function LogoUploader({ currentLogo, onLogoChange }: LogoUploaderProps) {
         </div>
       </div>
       <p className="text-sm text-muted-foreground">
-        Formatos aceptados: PNG, JPG, SVG. Tamaño máximo: 2MB. Dimensiones máximas: 1000x1000px.
+        Formatos aceptados: PNG, JPG, SVG. Tamaño máximo: 2MB.
       </p>
     </div>
   );

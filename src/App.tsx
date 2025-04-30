@@ -13,7 +13,7 @@ import { usePlansStore } from '@/store/plansStore';
 import { useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLocation } from 'react-router-dom';
-import { AdminLayout } from '@/components/layouts/AdminLayout';
+// AdminLayout se gestiona desde las rutas
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -47,13 +47,23 @@ function AppContent() {
   }, [fetchSettings, fetchPlans]);
 
   const isAdminRoute = location.pathname.startsWith('/admin');
+  const isLoginRoute = location.pathname === '/login';
 
-  // Si es una ruta de admin y el usuario es admin, usar AdminLayout
+  // Si es una ruta de admin y el usuario es admin, mostrar directamente las rutas
   if (isAdminRoute && isAdmin) {
     return (
-      <AdminLayout>
+      <div className="min-h-screen flex flex-col">
         <AppRoutes />
-      </AdminLayout>
+      </div>
+    );
+  }
+  
+  // Para la ruta de login, mostrar sin Navbar ni Footer
+  if (isLoginRoute) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <AppRoutes />
+      </div>
     );
   }
 

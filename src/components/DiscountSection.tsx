@@ -20,29 +20,31 @@ function DiscountCard({
 }: DiscountCardProps) {
   return (
     <div className={cn(
-      "relative h-full overflow-hidden rounded-xl border border-travel-100 group transition-all duration-300 hover:shadow-lg hover:scale-[1.01]",
+      "relative h-full overflow-hidden rounded-xl border border-gray-200 group transition-all duration-300 hover:shadow-md hover:scale-[1.01]",
       className
     )}>
+      {/* Imagen de fondo con opacidad aumentada */}
       <div className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-105"
            style={{ backgroundImage: `url(${imageSrc})` }} />
-      <div className="absolute inset-0 bg-gradient-to-t from-travel-950/90 via-travel-900/50 to-travel-950/20" />
+      {/* Gradient más sutil para que se vea mejor la imagen */}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/30 to-black/10" />
       <div className="relative h-full flex flex-col justify-end p-6 z-10">
         <div className="mb-auto">
-          <span className="inline-flex items-center rounded-full bg-primary/90 px-2.5 py-1 text-xs font-semibold text-white backdrop-blur-sm">
+          <span className="inline-flex items-center rounded-full bg-primary/80 px-2.5 py-1 text-xs font-semibold text-white backdrop-blur-sm">
             <Percent className="mr-1 h-3 w-3" />
             {discount} Off
           </span>
         </div>
         
         <h3 className="text-xl font-semibold text-white mb-2">{title}</h3>
-        <p className="text-white/80 text-sm mb-4">{description}</p>
+        <p className="text-white/90 text-sm mb-4">{description}</p>
         
-        <div className="flex items-center text-white/70 text-xs mb-4">
+        <div className="flex items-center text-white/80 text-xs mb-4">
           <Clock className="h-3 w-3 mr-1" />
           <span>Expira: {expiryDate}</span>
         </div>
         
-        <Button variant="outline" className="bg-travel-100/10 backdrop-blur-sm text-white border-white/20 hover:bg-white/20 hover:text-white">
+        <Button variant="outline" className="bg-black/20 backdrop-blur-sm text-white border-white/30 hover:bg-white/20 hover:text-white">
           Ver oferta
         </Button>
       </div>
@@ -56,12 +58,18 @@ interface DiscountSectionProps {
 
 export function DiscountSection({ className }: DiscountSectionProps) {
   const { content } = useSettingsStore();
+
+  // Si no hay contenido, inicializar con valores por defecto
+  if (!content?.discountSection) {
+    return null; // O podrías mostrar un mensaje de carga o un estado vacío
+  }
+
   const { sectionTitle, sectionSubtitle, badgeText, viewAllButtonText, discounts } = content.discountSection;
 
   // Filter active discounts and sort by order
   const activeDiscounts = discounts
-    .filter(discount => discount.active)
-    .sort((a, b) => a.order - b.order);
+    ?.filter(discount => discount.active)
+    ?.sort((a, b) => a.order - b.order) || [];
 
   // Mobile carousel items
   const mobileCarouselItems = activeDiscounts.map((discount, index) => (
@@ -84,11 +92,44 @@ export function DiscountSection({ className }: DiscountSectionProps) {
           </p>
         </div>
 
-        {/* Desktop - Grid Layout */}
-        <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {activeDiscounts.slice(0, 3).map((discount) => (
-            <DiscountCard key={discount.id} {...discount} className="h-full" />
-          ))}
+        {/* Desktop - Mosaic Layout */}
+        <div className="hidden md:grid md:grid-cols-12 gap-4">
+          {activeDiscounts.length > 0 && (
+            <div className="md:col-span-6 lg:col-span-8 h-[300px]">
+              <DiscountCard key={activeDiscounts[0].id} {...activeDiscounts[0]} className="h-full" />
+            </div>
+          )}
+          
+          <div className="md:col-span-6 lg:col-span-4 grid grid-rows-2 gap-4 h-[300px]">
+            {activeDiscounts.length > 1 && (
+              <div className="h-full">
+                <DiscountCard key={activeDiscounts[1].id} {...activeDiscounts[1]} className="h-full" />
+              </div>
+            )}
+            {activeDiscounts.length > 2 && (
+              <div className="h-full">
+                <DiscountCard key={activeDiscounts[2].id} {...activeDiscounts[2]} className="h-full" />
+              </div>
+            )}
+          </div>
+          
+          <div className="md:col-span-3 h-[200px]">
+            {activeDiscounts.length > 3 && (
+              <DiscountCard key={activeDiscounts[3].id} {...activeDiscounts[3]} className="h-full" />
+            )}
+          </div>
+          
+          <div className="md:col-span-5 h-[200px]">
+            {activeDiscounts.length > 4 && (
+              <DiscountCard key={activeDiscounts[4].id} {...activeDiscounts[4]} className="h-full" />
+            )}
+          </div>
+          
+          <div className="md:col-span-4 h-[200px]">
+            {activeDiscounts.length > 5 && (
+              <DiscountCard key={activeDiscounts[5].id} {...activeDiscounts[5]} className="h-full" />
+            )}
+          </div>
         </div>
 
         {/* Mobile - Carousel Layout */}

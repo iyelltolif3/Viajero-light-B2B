@@ -31,17 +31,22 @@ export interface QuoteCalculationParams {
   category: string;
 }
 
-export interface Plan {
+export interface BaseModel {
   id: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface Plan extends BaseModel {
   name: string;
   description: string;
   price: number;
+  basePrice: number;
+  priceMultiplier: number;
   priceDetail: string;
   features: string[];
   badge: string;
   maxDays: number;
-  basePrice: number;
-  priceMultiplier: number;
   coverageDetails: {
     medicalCoverage: number;
     luggageCoverage: number;
@@ -50,6 +55,14 @@ export interface Plan {
     preExistingConditions: boolean;
     adventureSports: boolean;
   };
+}
+
+export interface SystemSettings extends BaseModel {
+  name: string;
+  description: string;
+  countries: string[];
+  priceMultiplier: number;
+  settings_id: string;
 }
 
 export interface Voucher {

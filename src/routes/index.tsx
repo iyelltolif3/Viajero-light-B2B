@@ -3,7 +3,8 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 
 // Layouts
-import { AdminLayout } from '@/layouts/AdminLayout';
+import { AdminLayout as AdminLayoutMain } from '@/layouts/AdminLayout';
+// Nota: Usamos AdminLayoutMain que contiene solo la barra 'Panel Admin'
 
 // Pages
 import Login from '@/pages/Login';
@@ -77,7 +78,7 @@ export default function AppRoutes() {
         />
         
         {/* Rutas de administrador */}
-        <Route path="/admin" element={<AdminLayout />}>
+        <Route path="/admin" element={<AdminLayoutMain />}>
           <Route index element={<Dashboard />} />
           <Route path="settings" element={<Settings />} />
           <Route path="users" element={<Users />} />

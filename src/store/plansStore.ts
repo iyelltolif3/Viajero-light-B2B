@@ -11,7 +11,7 @@ interface PlansStore {
   setPlan: (plan: Plan) => void;
   updatePlan: (planId: string, updates: Partial<Plan>) => void;
   deletePlan: (planId: string) => void;
-  addPlan: (plan: Plan) => void;
+  addPlan: (planData: Omit<Plan, 'id'>) => Promise<Plan>;
 }
 
 export const usePlansStore = create<PlansStore>((set, get) => ({
@@ -59,15 +59,21 @@ export const usePlansStore = create<PlansStore>((set, get) => ({
     try {
       set({ isLoading: true, error: null });
 
-      const { error: updateError } = await supabase
+      const { data: updatedPlan, error: updateError } = await supabase
         .from('plans')
         .update(updates)
-        .eq('id', planId);
+        .eq('id', planId)
+        .select()
+        .single();
 
       if (updateError) throw updateError;
 
-      // Recargar los planes para obtener los datos actualizados
-      await get().fetchPlans();
+      // Update local state immediately
+      set((state) => ({
+        plans: state.plans.map((p) => (p.id === planId ? updatedPlan : p)),
+        isLoading: false,
+        error: null
+      }));
 
       toast({
         title: "Éxito",
@@ -96,10 +102,11 @@ export const usePlansStore = create<PlansStore>((set, get) => ({
 
       if (deleteError) throw deleteError;
 
+      // Update local state immediately
       set((state) => ({
         plans: state.plans.filter((plan) => plan.id !== planId),
         isLoading: false,
-        error: null,
+        error: null
       }));
 
       toast({
@@ -118,32 +125,43 @@ export const usePlansStore = create<PlansStore>((set, get) => ({
     }
   },
 
-  addPlan: async (plan) => {
+  addPlan: async (planData: Omit<Plan, 'id'>) => {
     try {
       set({ isLoading: true, error: null });
 
-      const { error: addError } = await supabase
+      const { data: newPlan, error: addError } = await supabase
         .from('plans')
-        .insert(plan);
+        .insert(planData)
+        .select()
+        .single();
 
-      if (addError) throw addError;
+      if (addError) {
+        console.error('Database error:', addError);
+        throw new Error(addError.message);
+      }
 
-      // Recargar los planes para obtener los datos actualizados
-      await get().fetchPlans();
+      if (!newPlan) {
+        throw new Error('No se recibió respuesta del servidor');
+      }
+
+      // Update local state immediately
+      set((state) => ({
+        plans: [...state.plans, newPlan],
+        isLoading: false,
+        error: null
+      }));
 
       toast({
         title: "Éxito",
         description: "Plan agregado correctamente",
       });
 
+      return newPlan;
+
     } catch (error) {
       console.error('Error adding plan:', error);
-      set({ isLoading: false, error: 'Error al agregar el plan' });
-      toast({
-        title: "Error",
-        description: "No se pudo agregar el plan",
-        variant: "destructive",
-      });
+      set({ isLoading: false, error: error instanceof Error ? error.message : 'Error al agregar el plan' });
+      throw error;
     }
   },
 }));

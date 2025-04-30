@@ -4,12 +4,14 @@ export interface DiscountItem {
   id: string;
   title: string;
   description: string;
+  discount?: number; // Mantenemos para compatibilidad con el código actual
+  discountPercentage: number; // Campo que realmente espera la base de datos
   code: string;
-  discountPercentage: number;
-  validUntil: string;
+  expiryDate?: string; // Probablemente ya no se usa
   imageSrc?: string;
   active: boolean;
   order: number;
+  validUntil: string;
 }
 
 export interface DiscountSection {
@@ -22,31 +24,4 @@ export interface DiscountSection {
 
 export interface ContentSettings extends BaseModel {
   discountSection: DiscountSection;
-  heroSection?: {
-    title: string;
-    subtitle: string;
-    ctaText: string;
-    backgroundImage: string;
-  };
-  featuresSection?: {
-    title: string;
-    subtitle: string;
-    features: Array<{
-      id: string;
-      title: string;
-      description: string;
-      icon: string;
-    }>;
-  };
-  testimonialSection?: {
-    title: string;
-    subtitle: string;
-    testimonials: Array<{
-      id: string;
-      author: string;
-      content: string;
-      rating: number;
-      avatar?: string;
-    }>;
-  };
 }

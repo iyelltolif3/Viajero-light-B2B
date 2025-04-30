@@ -17,8 +17,23 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 export default function AdminSettings() {
   const { plans, updatePlan, addPlan, deletePlan } = usePlansStore();
-  const { settings, updateSettings, error: settingsError } = useSettingsStore();
+  const { 
+    settings, 
+    localSettings,
+    updateLocalSettings, 
+    error: settingsError, 
+    fetchSettings, 
+    isLoading,
+    saveSettings,
+    hasUnsavedChanges,
+    discardChanges
+  } = useSettingsStore();
   const [selectedPlanId, setSelectedPlanId] = useState<string>('');
+
+  useEffect(() => {
+    // Fetch settings when component mounts
+    fetchSettings();
+  }, []); // Empty dependency array to run only once on mount
 
   useEffect(() => {
     if (plans && plans.length > 0) {
@@ -41,8 +56,24 @@ export default function AdminSettings() {
     );
   }
 
+  // Mostrar loading mientras se cargan los datos
+  if (isLoading) {
+    return (
+      <div className="container mx-auto py-8 px-4">
+        <Card>
+          <CardHeader>
+            <CardTitle>Cargando configuración...</CardTitle>
+            <CardDescription>
+              Por favor espere mientras se cargan los datos del sistema.
+            </CardDescription>
+          </CardHeader>
+        </Card>
+      </div>
+    );
+  }
+
   // Si no hay configuración, mostrar opción para inicializar
-  if (!settings) {
+  if (!localSettings) {
     return (
       <div className="container mx-auto py-8 px-4">
         <Card>
@@ -55,7 +86,7 @@ export default function AdminSettings() {
           <CardContent>
             <Button 
               onClick={() => {
-                updateSettings({
+                updateLocalSettings({
                   brandName: 'Mi Empresa',
                   brandLogo: '',
                   primaryColor: '#0f172a',
@@ -90,6 +121,7 @@ export default function AdminSettings() {
                     supportPhone: ''
                   }
                 });
+                saveSettings();
               }}
             >
               <Plus className="h-4 w-4 mr-2" />
@@ -110,9 +142,8 @@ export default function AdminSettings() {
 
   const selectedPlan = plans?.find(p => p.id === selectedPlanId);
 
-  const handleAddPlan = () => {
+  const handleAddPlan = async () => {
     const newPlan = {
-      id: Date.now().toString(),
       name: 'Nuevo Plan',
       description: 'Descripción del nuevo plan',
       price: 0,
@@ -131,16 +162,95 @@ export default function AdminSettings() {
         adventureSports: false,
       },
     };
-    addPlan(newPlan);
-    setSelectedPlanId(newPlan.id);
-    toast({
-      title: "Plan creado",
-      description: "Se ha creado un nuevo plan. Personalízalo según tus necesidades.",
+    
+    try {
+      const createdPlan = await addPlan(newPlan);
+      setSelectedPlanId(createdPlan.id);
+      toast({
+        title: "Plan creado",
+        description: "Se ha creado un nuevo plan. Personalízalo según tus necesidades.",
+      });
+    } catch (error) {
+      console.error('Error creating plan:', error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "No se pudo crear el plan. Por favor intente nuevamente.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const generateUUID = () => {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+      const r = Math.random() * 16 | 0;
+      const v = c === 'x' ? r : (r & 0x3 | 0x8);
+      return v.toString(16);
+    });
+  };
+
+  const handleAddZone = () => {
+    const newZone: Zone = {
+      id: generateUUID(),
+      settings_id: localSettings?.id || '',
+      name: '',
+      description: '',
+      countries: [],
+      price_multiplier: 1,
+    };
+
+    updateLocalSettings({
+      zones: [...(localSettings?.zones || []), newZone],
+    });
+  };
+
+  const handleAddAgeRange = () => {
+    const newAgeRange: AgeRange = {
+      id: generateUUID(),
+      settings_id: localSettings?.id || '',
+      minAge: 0,
+      maxAge: 0,
+      priceMultiplier: 1,
+    };
+
+    updateLocalSettings({
+      ageRanges: [...(localSettings?.ageRanges || []), newAgeRange],
+    });
+  };
+
+  const handleAddEmergencyContact = () => {
+    const newContact: EmergencyContact = {
+      id: generateUUID(),
+      settings_id: localSettings?.id || '',
+      name: '',
+      phone: '',
+      email: '',
+      country: '',
+      priority: (localSettings?.emergencyContacts?.length || 0) + 1,
+    };
+
+    updateLocalSettings({
+      emergencyContacts: [...(localSettings?.emergencyContacts || []), newContact],
     });
   };
 
   return (
     <div className="container mx-auto py-8 px-4">
+      {hasUnsavedChanges && (
+        <div className="mb-4 flex items-center justify-between bg-yellow-50 p-4 rounded-lg border border-yellow-200">
+          <div className="flex items-center">
+            <AlertCircle className="h-5 w-5 text-yellow-600 mr-2" />
+            <span className="text-yellow-800">Hay cambios sin guardar</span>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={discardChanges}>
+              Descartar Cambios
+            </Button>
+            <Button onClick={saveSettings}>
+              Guardar Cambios
+            </Button>
+          </div>
+        </div>
+      )}
       <h1 className="text-3xl font-bold mb-8">Configuración del Sistema</h1>
 
       <Tabs defaultValue={!plans?.length ? "branding" : "plans"} className="space-y-6">
@@ -386,22 +496,7 @@ export default function AdminSettings() {
               <div className="flex justify-between items-center">
                 <CardTitle>Configuración de Zonas</CardTitle>
                 <Button
-                  onClick={() => {
-                    const newZone: Zone = {
-                      id: Date.now().toString(),
-                      settingsId: settings.id,
-                      name: 'Nueva Zona',
-                      priceMultiplier: 1,
-                      countries: [],
-                      riskLevel: 'low',
-                      isActive: true,
-                      createdAt: new Date().toISOString(),
-                      updatedAt: new Date().toISOString()
-                    };
-                    updateSettings({
-                      zones: [...settings.zones, newZone]
-                    });
-                  }}
+                  onClick={handleAddZone}
                 >
                   <Plus className="h-4 w-4 mr-2" />
                   Nueva Zona
@@ -413,113 +508,78 @@ export default function AdminSettings() {
             </CardHeader>
             <CardContent>
               <div className="space-y-6">
-                {settings.zones.map((zone, index) => (
+                {localSettings.zones.map((zone, index) => (
                   <div key={zone.id} className="space-y-4 p-4 border rounded-lg">
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1 space-y-4">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div>
-                            <Label>Nombre de la Zona</Label>
-                            <Input
-                              value={zone.name}
-                              onChange={(e) => {
-                                const newZones = [...settings.zones];
-                                newZones[index] = { ...zone, name: e.target.value };
-                                updateSettings({ zones: newZones });
-                              }}
-                            />
-                          </div>
-                          <div>
-                            <Label>Multiplicador de Precio</Label>
-                            <Input
-                              type="number"
-                              min="0"
-                              step="0.1"
-                              value={zone.priceMultiplier}
-                              onChange={(e) => {
-                                const newZones = [...settings.zones];
-                                newZones[index] = { ...zone, priceMultiplier: parseFloat(e.target.value) };
-                                updateSettings({ zones: newZones });
-                              }}
-                            />
-                          </div>
-                        </div>
-                        <div>
-                          <Label>Nivel de Riesgo</Label>
-                          <Select
-                            value={zone.riskLevel}
-                            onValueChange={(value: 'low' | 'medium' | 'high') => {
-                              const newZones = [...settings.zones];
-                              newZones[index] = { ...zone, riskLevel: value };
-                              updateSettings({ zones: newZones });
-                            }}
-                          >
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="low">Bajo</SelectItem>
-                              <SelectItem value="medium">Medio</SelectItem>
-                              <SelectItem value="high">Alto</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div>
-                          <Label>Países</Label>
-                          <div className="space-y-2">
-                            {zone.countries.map((country, countryIndex) => (
-                              <div key={countryIndex} className="flex gap-2">
-                                <Input
-                                  value={country}
-                                  onChange={(e) => {
-                                    const newZones = [...settings.zones];
-                                    const newCountries = [...zone.countries];
-                                    newCountries[countryIndex] = e.target.value;
-                                    newZones[index] = { ...zone, countries: newCountries };
-                                    updateSettings({ zones: newZones });
-                                  }}
-                                />
-                                <Button
-                                  variant="destructive"
-                                  size="icon"
-                                  onClick={() => {
-                                    const newZones = [...settings.zones];
-                                    const newCountries = zone.countries.filter((_, i) => i !== countryIndex);
-                                    newZones[index] = { ...zone, countries: newCountries };
-                                    updateSettings({ zones: newZones });
-                                  }}
-                                >
-                                  <X className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            ))}
-                            <Button
-                              variant="outline"
-                              onClick={() => {
-                                const newZones = [...settings.zones];
-                                newZones[index] = {
-                                  ...zone,
-                                  countries: [...zone.countries, '']
-                                };
-                                updateSettings({ zones: newZones });
-                              }}
-                            >
-                              <Plus className="h-4 w-4 mr-2" />
-                              Agregar País
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
+                    <div className="flex items-center justify-between">
+                      <h4 className="font-semibold">
+                        Zona #{index + 1}
+                      </h4>
                       <Button
-                        variant="destructive"
+                        variant="ghost"
                         size="icon"
                         onClick={() => {
-                          const newZones = settings.zones.filter((_, i) => i !== index);
-                          updateSettings({ zones: newZones });
+                          const newZones = [...localSettings.zones];
+                          newZones.splice(index, 1);
+                          updateLocalSettings({
+                            zones: newZones,
+                          });
                         }}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <Label>Nombre</Label>
+                        <Input
+                          value={zone.name}
+                          onChange={(e) => {
+                            const newZones = [...localSettings.zones];
+                            newZones[index] = {
+                              ...zone,
+                              name: e.target.value,
+                            };
+                            updateLocalSettings({
+                              zones: newZones,
+                            });
+                          }}
+                        />
+                      </div>
+                      <div>
+                        <Label>Descripción</Label>
+                        <Input
+                          value={zone.description}
+                          onChange={(e) => {
+                            const newZones = [...localSettings.zones];
+                            newZones[index] = {
+                              ...zone,
+                              description: e.target.value,
+                            };
+                            updateLocalSettings({
+                              zones: newZones,
+                            });
+                          }}
+                        />
+                      </div>
+                      <div>
+                        <Label>Multiplicador de Precio</Label>
+                        <Input
+                          type="number"
+                          min={0}
+                          step={0.1}
+                          value={zone.price_multiplier}
+                          onChange={(e) => {
+                            const newZones = [...localSettings.zones];
+                            newZones[index] = {
+                              ...zone,
+                              price_multiplier: parseFloat(e.target.value) || 0,
+                            };
+                            updateLocalSettings({
+                              zones: newZones,
+                            });
+                          }}
+                        />
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -538,7 +598,7 @@ export default function AdminSettings() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {settings.ageRanges.map((range, index) => (
+                {localSettings.ageRanges.map((range, index) => (
                   <div key={range.id} className="flex items-end gap-4">
                     <div className="flex-1">
                       <Label>Edad Mínima</Label>
@@ -546,13 +606,12 @@ export default function AdminSettings() {
                         type="number"
                         value={range.minAge}
                         onChange={(e) => {
-                          const newRanges = [...settings.ageRanges];
+                          const newRanges = [...localSettings.ageRanges];
                           newRanges[index] = {
                             ...range,
                             minAge: parseInt(e.target.value),
                           };
-                          updateSettings({
-                            ...settings,
+                          updateLocalSettings({
                             ageRanges: newRanges,
                           });
                         }}
@@ -564,13 +623,12 @@ export default function AdminSettings() {
                         type="number"
                         value={range.maxAge}
                         onChange={(e) => {
-                          const newRanges = [...settings.ageRanges];
+                          const newRanges = [...localSettings.ageRanges];
                           newRanges[index] = {
                             ...range,
                             maxAge: parseInt(e.target.value),
                           };
-                          updateSettings({
-                            ...settings,
+                          updateLocalSettings({
                             ageRanges: newRanges,
                           });
                         }}
@@ -583,13 +641,12 @@ export default function AdminSettings() {
                         step="0.1"
                         value={range.priceMultiplier}
                         onChange={(e) => {
-                          const newRanges = [...settings.ageRanges];
+                          const newRanges = [...localSettings.ageRanges];
                           newRanges[index] = {
                             ...range,
                             priceMultiplier: parseFloat(e.target.value),
                           };
-                          updateSettings({
-                            ...settings,
+                          updateLocalSettings({
                             ageRanges: newRanges,
                           });
                         }}
@@ -599,9 +656,8 @@ export default function AdminSettings() {
                       variant="ghost"
                       size="icon"
                       onClick={() => {
-                        const newRanges = settings.ageRanges.filter(r => r.id !== range.id);
-                        updateSettings({
-                          ...settings,
+                        const newRanges = localSettings.ageRanges.filter(r => r.id !== range.id);
+                        updateLocalSettings({
                           ageRanges: newRanges,
                         });
                       }}
@@ -612,22 +668,7 @@ export default function AdminSettings() {
                 ))}
                 <Button
                   variant="outline"
-                  onClick={() => {
-                    const newAgeRange: AgeRange = {
-                      id: Date.now().toString(),
-                      settingsId: settings.id,
-                      minAge: 0,
-                      maxAge: 99,
-                      priceMultiplier: 1,
-                      isActive: true,
-                      createdAt: new Date().toISOString(),
-                      updatedAt: new Date().toISOString(),
-                    };
-                    updateSettings({
-                      ...settings,
-                      ageRanges: [...settings.ageRanges, newAgeRange],
-                    });
-                  }}
+                  onClick={handleAddAgeRange}
                 >
                   <Plus className="h-4 w-4 mr-2" />
                   Nuevo Rango
@@ -643,24 +684,7 @@ export default function AdminSettings() {
               <div className="flex justify-between items-center">
                 <CardTitle>Contactos de Emergencia</CardTitle>
                 <Button
-                  onClick={() => {
-                    const newContact: EmergencyContact = {
-                      id: Date.now().toString(),
-                      settingsId: settings.id,
-                      name: '',
-                      phone: '',
-                      email: '',
-                      country: '',
-                      address: '',
-                      priority: settings.emergencyContacts.length,
-                      isActive: true,
-                      createdAt: new Date().toISOString(),
-                      updatedAt: new Date().toISOString(),
-                    };
-                    updateSettings({
-                      emergencyContacts: [...settings.emergencyContacts, newContact],
-                    });
-                  }}
+                  onClick={handleAddEmergencyContact}
                 >
                   <Plus className="h-4 w-4 mr-2" />
                   Nuevo Contacto
@@ -672,32 +696,19 @@ export default function AdminSettings() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {settings.emergencyContacts.map((contact, index) => (
+                {localSettings.emergencyContacts.map((contact, index) => (
                   <div key={contact.id} className="space-y-4 p-4 border rounded-lg">
                     <div className="flex items-center justify-between">
                       <h4 className="text-sm font-medium">
                         Contacto #{index + 1}
                       </h4>
                       <div className="flex items-center gap-2">
-                        <Switch
-                          checked={contact.isActive}
-                          onCheckedChange={(checked) => {
-                            const newContacts = [...settings.emergencyContacts];
-                            newContacts[index] = {
-                              ...contact,
-                              isActive: checked,
-                            };
-                            updateSettings({
-                              emergencyContacts: newContacts,
-                            });
-                          }}
-                        />
                         <Button
                           variant="ghost"
                           size="icon"
                           onClick={() => {
-                            const newContacts = settings.emergencyContacts.filter(c => c.id !== contact.id);
-                            updateSettings({
+                            const newContacts = localSettings.emergencyContacts.filter(c => c.id !== contact.id);
+                            updateLocalSettings({
                               emergencyContacts: newContacts,
                             });
                           }}
@@ -712,12 +723,12 @@ export default function AdminSettings() {
                         <Input
                           value={contact.name}
                           onChange={(e) => {
-                            const newContacts = [...settings.emergencyContacts];
+                            const newContacts = [...localSettings.emergencyContacts];
                             newContacts[index] = {
                               ...contact,
                               name: e.target.value,
                             };
-                            updateSettings({
+                            updateLocalSettings({
                               emergencyContacts: newContacts,
                             });
                           }}
@@ -728,12 +739,12 @@ export default function AdminSettings() {
                         <Input
                           value={contact.phone}
                           onChange={(e) => {
-                            const newContacts = [...settings.emergencyContacts];
+                            const newContacts = [...localSettings.emergencyContacts];
                             newContacts[index] = {
                               ...contact,
                               phone: e.target.value,
                             };
-                            updateSettings({
+                            updateLocalSettings({
                               emergencyContacts: newContacts,
                             });
                           }}
@@ -745,12 +756,12 @@ export default function AdminSettings() {
                           type="email"
                           value={contact.email}
                           onChange={(e) => {
-                            const newContacts = [...settings.emergencyContacts];
+                            const newContacts = [...localSettings.emergencyContacts];
                             newContacts[index] = {
                               ...contact,
                               email: e.target.value,
                             };
-                            updateSettings({
+                            updateLocalSettings({
                               emergencyContacts: newContacts,
                             });
                           }}
@@ -761,12 +772,12 @@ export default function AdminSettings() {
                         <Input
                           value={contact.country}
                           onChange={(e) => {
-                            const newContacts = [...settings.emergencyContacts];
+                            const newContacts = [...localSettings.emergencyContacts];
                             newContacts[index] = {
                               ...contact,
                               country: e.target.value,
                             };
-                            updateSettings({
+                            updateLocalSettings({
                               emergencyContacts: newContacts,
                             });
                           }}
@@ -793,19 +804,18 @@ export default function AdminSettings() {
                 <div>
                   <Label>Días antes de expiración para notificar</Label>
                   <div className="flex gap-2 mt-2">
-                    {settings.notifications.beforeExpiration.map((days, index) => (
+                    {localSettings.notifications.beforeExpiration.map((days, index) => (
                       <Input 
                         key={index}
                         type="number"
                         value={days}
                         className="w-20"
                         onChange={(e) => {
-                          const newDays = [...settings.notifications.beforeExpiration];
+                          const newDays = [...localSettings.notifications.beforeExpiration];
                           newDays[index] = parseInt(e.target.value);
-                          updateSettings({
-                            ...settings,
+                          updateLocalSettings({
                             notifications: {
-                              ...settings.notifications,
+                              ...localSettings.notifications,
                               beforeExpiration: newDays
                             }
                           });
@@ -817,12 +827,11 @@ export default function AdminSettings() {
                 <div className="space-y-4">
                   <div className="flex items-center space-x-2">
                     <Switch
-                      checked={settings.notifications.reminderEmails}
+                      checked={localSettings.notifications.reminderEmails}
                       onCheckedChange={(checked) => {
-                        updateSettings({
-                          ...settings,
+                        updateLocalSettings({
                           notifications: {
-                            ...settings.notifications,
+                            ...localSettings.notifications,
                             reminderEmails: checked
                           }
                         });
@@ -832,12 +841,11 @@ export default function AdminSettings() {
                   </div>
                   <div className="flex items-center space-x-2">
                     <Switch
-                      checked={settings.notifications.smsNotifications}
+                      checked={localSettings.notifications.smsNotifications}
                       onCheckedChange={(checked) => {
-                        updateSettings({
-                          ...settings,
+                        updateLocalSettings({
                           notifications: {
-                            ...settings.notifications,
+                            ...localSettings.notifications,
                             smsNotifications: checked
                           }
                         });
@@ -847,12 +855,11 @@ export default function AdminSettings() {
                   </div>
                   <div className="flex items-center space-x-2">
                     <Switch
-                      checked={settings.notifications.whatsappNotifications}
+                      checked={localSettings.notifications.whatsappNotifications}
                       onCheckedChange={(checked) => {
-                        updateSettings({
-                          ...settings,
+                        updateLocalSettings({
                           notifications: {
-                            ...settings.notifications,
+                            ...localSettings.notifications,
                             whatsappNotifications: checked
                           }
                         });
@@ -879,12 +886,11 @@ export default function AdminSettings() {
                 <div>
                   <Label>Moneda</Label>
                   <Select
-                    value={settings.paymentSettings.currency}
+                    value={localSettings.paymentSettings.currency}
                     onValueChange={(value) => {
-                      updateSettings({
-                        ...settings,
+                      updateLocalSettings({
                         paymentSettings: {
-                          ...settings.paymentSettings,
+                          ...localSettings.paymentSettings,
                           currency: value
                         }
                       });
@@ -904,12 +910,11 @@ export default function AdminSettings() {
                   <Label>Tasa de Impuestos (%)</Label>
                   <Input 
                     type="number"
-                    value={settings.paymentSettings.taxRate}
+                    value={localSettings.paymentSettings.taxRate}
                     onChange={(e) => {
-                      updateSettings({
-                        ...settings,
+                      updateLocalSettings({
                         paymentSettings: {
-                          ...settings.paymentSettings,
+                          ...localSettings.paymentSettings,
                           taxRate: parseFloat(e.target.value)
                         }
                       });
@@ -920,12 +925,11 @@ export default function AdminSettings() {
                   <Label>Tasa de Comisión (%)</Label>
                   <Input 
                     type="number"
-                    value={settings.paymentSettings.commissionRate}
+                    value={localSettings.paymentSettings.commissionRate}
                     onChange={(e) => {
-                      updateSettings({
-                        ...settings,
+                      updateLocalSettings({
                         paymentSettings: {
-                          ...settings.paymentSettings,
+                          ...localSettings.paymentSettings,
                           commissionRate: parseFloat(e.target.value)
                         }
                       });
@@ -950,12 +954,11 @@ export default function AdminSettings() {
                 <div>
                   <Label>Nombre de la Empresa</Label>
                   <Input
-                    value={settings.branding.companyName}
+                    value={localSettings.branding.companyName}
                     onChange={(e) => {
-                      updateSettings({
-                        ...settings,
+                      updateLocalSettings({
                         branding: {
-                          ...settings.branding,
+                          ...localSettings.branding,
                           companyName: e.target.value
                         }
                       });
@@ -964,12 +967,11 @@ export default function AdminSettings() {
                 </div>
 
                 <LogoUploader
-                  currentLogo={settings.branding.logo}
+                  currentLogo={localSettings.branding.logo}
                   onLogoChange={(logo) => {
-                    updateSettings({
-                      ...settings,
+                    updateLocalSettings({
                       branding: {
-                        ...settings.branding,
+                        ...localSettings.branding,
                         logo
                       }
                     });
@@ -979,12 +981,11 @@ export default function AdminSettings() {
                 <div>
                   <Label>Color Primario</Label>
                   <ColorPicker
-                    color={settings.branding.primaryColor}
+                    color={localSettings.branding.primaryColor}
                     onChange={(color) => {
-                      updateSettings({
-                        ...settings,
+                      updateLocalSettings({
                         branding: {
-                          ...settings.branding,
+                          ...localSettings.branding,
                           primaryColor: color
                         }
                       });
@@ -995,12 +996,11 @@ export default function AdminSettings() {
                 <div>
                   <Label>Color Secundario</Label>
                   <ColorPicker
-                    color={settings.branding.secondaryColor}
+                    color={localSettings.branding.secondaryColor}
                     onChange={(color) => {
-                      updateSettings({
-                        ...settings,
+                      updateLocalSettings({
                         branding: {
-                          ...settings.branding,
+                          ...localSettings.branding,
                           secondaryColor: color
                         }
                       });
@@ -1012,12 +1012,11 @@ export default function AdminSettings() {
                   <Label>Email de Contacto</Label>
                   <Input
                     type="email"
-                    value={settings.branding.contactEmail}
+                    value={localSettings.branding.contactEmail}
                     onChange={(e) => {
-                      updateSettings({
-                        ...settings,
+                      updateLocalSettings({
                         branding: {
-                          ...settings.branding,
+                          ...localSettings.branding,
                           contactEmail: e.target.value
                         }
                       });
@@ -1028,12 +1027,11 @@ export default function AdminSettings() {
                 <div>
                   <Label>Teléfono de Soporte</Label>
                   <Input
-                    value={settings.branding.supportPhone}
+                    value={localSettings.branding.supportPhone}
                     onChange={(e) => {
-                      updateSettings({
-                        ...settings,
+                      updateLocalSettings({
                         branding: {
-                          ...settings.branding,
+                          ...localSettings.branding,
                           supportPhone: e.target.value
                         }
                       });
@@ -1047,4 +1045,4 @@ export default function AdminSettings() {
       </Tabs>
     </div>
   );
-} 
+}
