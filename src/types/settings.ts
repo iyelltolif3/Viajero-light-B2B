@@ -1,7 +1,7 @@
 export interface BaseModel {
   id: string;
-  created_at?: string;
-  updated_at?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface AdminSettings extends BaseModel {
@@ -10,20 +10,23 @@ export interface AdminSettings extends BaseModel {
   primaryColor: string;
   secondaryColor: string;
   tertiaryColor: string;
-  emergencyContacts: EmergencyContact[];
-  notificationSettings: NotificationSettings;
-  paymentSettings: PaymentSettings;
-  zones: Zone[];
-  ageRanges: AgeRange[];
-  notifications: {
-    beforeExpiration: number[];
-    reminderEmails: boolean;
-    smsNotifications: boolean;
-    whatsappNotifications: boolean;
+  notificationSettings: {
+    emailEnabled: boolean;
+    smsEnabled: boolean;
+    pushEnabled: boolean;
   };
+  paymentSettings: {
+    currency: string;
+    taxRate: number;
+    paymentMethods: string[];
+  };
+  notifications: {
+    id: string;
+    type: string;
+    message: string;
+    active: boolean;
+  }[];
   branding: {
-    primaryColor: string;
-    secondaryColor: string;
     logo: string;
     companyName: string;
     contactEmail: string;
@@ -32,12 +35,14 @@ export interface AdminSettings extends BaseModel {
 }
 
 export interface EmergencyContact extends BaseModel {
-  settings_id: string;
+  settingsId: string;
   name: string;
   phone: string;
   email: string;
   country: string;
+  address: string;
   priority: number;
+  isActive: boolean;
 }
 
 export interface NotificationSettings {
@@ -54,18 +59,20 @@ export interface PaymentSettings {
 }
 
 export interface Zone extends BaseModel {
+  settingsId: string;
   name: string;
-  description: string;
+  priceMultiplier: number;
   countries: string[];
-  price_multiplier: number;
-  settings_id: string;
+  riskLevel: 'low' | 'medium' | 'high';
+  isActive: boolean;
 }
 
 export interface AgeRange extends BaseModel {
+  settingsId: string;
   minAge: number;
   maxAge: number;
   priceMultiplier: number;
-  settings_id: string;
+  isActive: boolean;
 }
 
 export interface ContentSettings extends BaseModel {

@@ -6,19 +6,19 @@ export interface Destination {
   id: string;
   name: string;
   region: string;
-  priceMultiplier: number;
-  riskLevel: 'low' | 'medium' | 'high';
+  price_multiplier: number;
+  risk_level: 'low' | 'medium' | 'high';
 }
 
 export interface QuoteFormData {
   origin: string;
   destination: Destination | null;
   dates: {
-    departureDate?: Date;
-    returnDate?: Date;
+    departure_date?: Date;
+    return_date?: Date;
   };
   travelers: { age: number }[];
-  contactInfo?: {
+  contact_info?: {
     phone: string;
     email: string;
   };
@@ -33,20 +33,15 @@ export interface QuoteCalculationParams {
 
 export interface BaseModel {
   id: string;
-  created_at?: string;
-  updated_at?: string;
-}
-
-export interface Plan extends BaseModel {
   name: string;
   description: string;
   price: number;
-  basePrice: number;
-  priceMultiplier: number;
   priceDetail: string;
   features: string[];
   badge: string;
   maxDays: number;
+  basePrice: number;
+  priceMultiplier: number;
   coverageDetails: {
     medicalCoverage: number;
     luggageCoverage: number;
@@ -55,6 +50,9 @@ export interface Plan extends BaseModel {
     preExistingConditions: boolean;
     adventureSports: boolean;
   };
+  created_at: string;
+  updated_at: string;
+  is_active: boolean;
 }
 
 export interface SystemSettings extends BaseModel {
@@ -67,52 +65,52 @@ export interface SystemSettings extends BaseModel {
 
 export interface Voucher {
   id: string;
-  planId: string;
-  userId: string;
+  plan_id: string;
+  user_id: string;
   travelers: {
     name: string;
     age: number;
     passport: string;
     nationality: string;
   }[];
-  startDate: string;
-  endDate: string;
+  start_date: string;
+  end_date: string;
   status: 'active' | 'expired' | 'cancelled';
-  emergencyContact: {
+  emergency_contact: {
     name: string;
     phone: string;
     email: string;
   };
-  qrCode: string;
-  createdAt: string;
-  updatedAt: string;
+  qr_code: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface Assistance {
   id: string;
-  planName: string;
+  plan_name: string;
   status: 'active' | 'future' | 'expired';
-  startDate: string;
-  endDate: string;
+  start_date: string;
+  end_date: string;
   travelers: {
     name: string;
     age: number;
     passport: string;
     nationality: string;
   }[];
-  contactInfo: {
+  contact_info: {
     phone: string;
     email: string;
   };
-  totalPrice: number;
-  planDetails: {
-    coverageDetails: {
-      medicalCoverage: number;
-      luggageCoverage: number;
-      cancellationCoverage: number;
-      covidCoverage: boolean;
-      preExistingConditions: boolean;
-      adventureSports: boolean;
+  total_price: number;
+  plan_details: {
+    coverage_details: {
+      medical_coverage: number;
+      luggage_coverage: number;
+      cancellation_coverage: number;
+      covid_coverage: boolean;
+      pre_existing_conditions: boolean;
+      adventure_sports: boolean;
     };
     features: string[];
   };

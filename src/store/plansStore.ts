@@ -2,44 +2,53 @@ import { create } from 'zustand';
 import type { Plan } from '@/types';
 import { supabase } from '@/lib/supabase';
 import { toast } from '@/components/ui/use-toast';
+import { transformObjectToSnakeCase, transformObjectToCamelCase } from '@/lib/utils';
 
 interface PlansStore {
   plans: Plan[];
-  isLoading: boolean;
+  local_plans: Plan[];
+  is_loading: boolean;
   error: string | null;
+  has_unsaved_changes: boolean;
   fetchPlans: () => Promise<void>;
   setPlan: (plan: Plan) => void;
   updatePlan: (planId: string, updates: Partial<Plan>) => void;
   deletePlan: (planId: string) => void;
-  addPlan: (planData: Omit<Plan, 'id'>) => Promise<Plan>;
+  addPlan: (plan: Plan) => void;
 }
 
 export const usePlansStore = create<PlansStore>((set, get) => ({
   plans: [],
-  isLoading: false,
+  local_plans: [],
+  is_loading: false,
   error: null,
+  has_unsaved_changes: false,
 
   fetchPlans: async () => {
     try {
-      set({ isLoading: true, error: null });
+      set({ is_loading: true, error: null });
 
       const { data: plansData, error: plansError } = await supabase
         .from('plans')
         .select('*')
-        .order('price');
+        .order('created_at');
 
       if (plansError) throw plansError;
 
+      const transformedPlans = plansData?.map(plan => transformObjectToCamelCase(plan)) || [];
+
       set({
-        plans: plansData || [],
-        isLoading: false,
+        plans: transformedPlans,
+        local_plans: transformedPlans,
+        is_loading: false,
         error: null,
+        has_unsaved_changes: false,
       });
 
     } catch (error) {
       console.error('Error fetching plans:', error);
       set({
-        isLoading: false,
+        is_loading: false,
         error: 'Error al cargar los planes',
       });
       toast({
@@ -59,33 +68,27 @@ export const usePlansStore = create<PlansStore>((set, get) => ({
     try {
       set({ isLoading: true, error: null });
 
-      const { data: updatedPlan, error: updateError } = await supabase
+      const { error: updateError } = await supabase
         .from('plans')
         .update(updates)
-        .eq('id', planId)
-        .select()
-        .single();
+        .eq('id', planId);
 
       if (updateError) throw updateError;
 
-      // Update local state immediately
-      set((state) => ({
-        plans: state.plans.map((p) => (p.id === planId ? updatedPlan : p)),
-        isLoading: false,
-        error: null
-      }));
+      // Recargar los planes para obtener los datos actualizados
+      await get().fetchPlans();
 
       toast({
         title: "Éxito",
-        description: "Plan actualizado correctamente",
+        description: "Cambios guardados correctamente",
       });
 
     } catch (error) {
-      console.error('Error updating plan:', error);
-      set({ isLoading: false, error: 'Error al actualizar el plan' });
+      console.error('Error saving plans:', error);
+      set({ is_loading: false, error: 'Error al guardar los planes' });
       toast({
         title: "Error",
-        description: "No se pudo actualizar el plan",
+        description: "No se pudieron guardar los cambios",
         variant: "destructive",
       });
     }
@@ -93,7 +96,7 @@ export const usePlansStore = create<PlansStore>((set, get) => ({
 
   deletePlan: async (planId) => {
     try {
-      set({ isLoading: true, error: null });
+      set({ is_loading: true, error: null });
 
       const { error: deleteError } = await supabase
         .from('plans')
@@ -102,11 +105,10 @@ export const usePlansStore = create<PlansStore>((set, get) => ({
 
       if (deleteError) throw deleteError;
 
-      // Update local state immediately
       set((state) => ({
         plans: state.plans.filter((plan) => plan.id !== planId),
         isLoading: false,
-        error: null
+        error: null,
       }));
 
       toast({
@@ -116,7 +118,7 @@ export const usePlansStore = create<PlansStore>((set, get) => ({
 
     } catch (error) {
       console.error('Error deleting plan:', error);
-      set({ isLoading: false, error: 'Error al eliminar el plan' });
+      set({ is_loading: false, error: 'Error al eliminar el plan' });
       toast({
         title: "Error",
         description: "No se pudo eliminar el plan",
@@ -125,43 +127,32 @@ export const usePlansStore = create<PlansStore>((set, get) => ({
     }
   },
 
-  addPlan: async (planData: Omit<Plan, 'id'>) => {
+  addPlan: async (plan) => {
     try {
       set({ isLoading: true, error: null });
 
-      const { data: newPlan, error: addError } = await supabase
+      const { error: addError } = await supabase
         .from('plans')
-        .insert(planData)
-        .select()
-        .single();
+        .insert(plan);
 
-      if (addError) {
-        console.error('Database error:', addError);
-        throw new Error(addError.message);
-      }
+      if (addError) throw addError;
 
-      if (!newPlan) {
-        throw new Error('No se recibió respuesta del servidor');
-      }
-
-      // Update local state immediately
-      set((state) => ({
-        plans: [...state.plans, newPlan],
-        isLoading: false,
-        error: null
-      }));
+      // Recargar los planes para obtener los datos actualizados
+      await get().fetchPlans();
 
       toast({
         title: "Éxito",
         description: "Plan agregado correctamente",
       });
 
-      return newPlan;
-
     } catch (error) {
       console.error('Error adding plan:', error);
-      set({ isLoading: false, error: error instanceof Error ? error.message : 'Error al agregar el plan' });
-      throw error;
+      set({ isLoading: false, error: 'Error al agregar el plan' });
+      toast({
+        title: "Error",
+        description: "No se pudo agregar el plan",
+        variant: "destructive",
+      });
     }
   },
 }));

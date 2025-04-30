@@ -4,17 +4,22 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import Carousel from './ui/carousel-custom';
 import { useSettingsStore } from '@/store/settingsStore';
-import type { DiscountItem } from '@/types/content';
+import type { DiscountItem } from '@/types';
 
-interface DiscountCardProps extends DiscountItem {
+interface DiscountCardProps {
+  title: string;
+  description: string;
+  discountPercentage: number;
+  validUntil: string;
+  imageSrc?: string;
   className?: string;
 }
 
 function DiscountCard({
   title,
   description,
-  discount,
-  expiryDate,
+  discountPercentage,
+  validUntil,
   imageSrc,
   className,
 }: DiscountCardProps) {
@@ -32,7 +37,7 @@ function DiscountCard({
         <div className="mb-auto">
           <span className="inline-flex items-center rounded-full bg-primary/80 px-2.5 py-1 text-xs font-semibold text-white backdrop-blur-sm">
             <Percent className="mr-1 h-3 w-3" />
-            {discount} Off
+            {discountPercentage}% Off
           </span>
         </div>
         
@@ -41,7 +46,7 @@ function DiscountCard({
         
         <div className="flex items-center text-white/80 text-xs mb-4">
           <Clock className="h-3 w-3 mr-1" />
-          <span>Expira: {expiryDate}</span>
+          <span>Expira: {validUntil}</span>
         </div>
         
         <Button variant="outline" className="bg-black/20 backdrop-blur-sm text-white border-white/30 hover:bg-white/20 hover:text-white">
@@ -58,23 +63,24 @@ interface DiscountSectionProps {
 
 export function DiscountSection({ className }: DiscountSectionProps) {
   const { content } = useSettingsStore();
-
-  // Si no hay contenido, inicializar con valores por defecto
-  if (!content?.discountSection) {
-    return null; // O podrías mostrar un mensaje de carga o un estado vacío
-  }
-
   const { sectionTitle, sectionSubtitle, badgeText, viewAllButtonText, discounts } = content.discountSection;
 
   // Filter active discounts and sort by order
   const activeDiscounts = discounts
-    ?.filter(discount => discount.active)
-    ?.sort((a, b) => a.order - b.order) || [];
+    .filter(discount => discount.active)
+    .sort((a, b) => a.order - b.order);
 
   // Mobile carousel items
-  const mobileCarouselItems = activeDiscounts.map((discount, index) => (
+  const mobileCarouselItems = activeDiscounts.map((discount) => (
     <div key={discount.id} className="h-full w-full px-1">
-      <DiscountCard {...discount} className="h-full" />
+      <DiscountCard
+        title={discount.title}
+        description={discount.description}
+        discountPercentage={discount.discountPercentage}
+        validUntil={discount.validUntil}
+        imageSrc={discount.imageSrc}
+        className="h-full"
+      />
     </div>
   ));
 
@@ -92,44 +98,11 @@ export function DiscountSection({ className }: DiscountSectionProps) {
           </p>
         </div>
 
-        {/* Desktop - Mosaic Layout */}
-        <div className="hidden md:grid md:grid-cols-12 gap-4">
-          {activeDiscounts.length > 0 && (
-            <div className="md:col-span-6 lg:col-span-8 h-[300px]">
-              <DiscountCard key={activeDiscounts[0].id} {...activeDiscounts[0]} className="h-full" />
-            </div>
-          )}
-          
-          <div className="md:col-span-6 lg:col-span-4 grid grid-rows-2 gap-4 h-[300px]">
-            {activeDiscounts.length > 1 && (
-              <div className="h-full">
-                <DiscountCard key={activeDiscounts[1].id} {...activeDiscounts[1]} className="h-full" />
-              </div>
-            )}
-            {activeDiscounts.length > 2 && (
-              <div className="h-full">
-                <DiscountCard key={activeDiscounts[2].id} {...activeDiscounts[2]} className="h-full" />
-              </div>
-            )}
-          </div>
-          
-          <div className="md:col-span-3 h-[200px]">
-            {activeDiscounts.length > 3 && (
-              <DiscountCard key={activeDiscounts[3].id} {...activeDiscounts[3]} className="h-full" />
-            )}
-          </div>
-          
-          <div className="md:col-span-5 h-[200px]">
-            {activeDiscounts.length > 4 && (
-              <DiscountCard key={activeDiscounts[4].id} {...activeDiscounts[4]} className="h-full" />
-            )}
-          </div>
-          
-          <div className="md:col-span-4 h-[200px]">
-            {activeDiscounts.length > 5 && (
-              <DiscountCard key={activeDiscounts[5].id} {...activeDiscounts[5]} className="h-full" />
-            )}
-          </div>
+        {/* Desktop - Grid Layout */}
+        <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {activeDiscounts.slice(0, 3).map((discount) => (
+            <DiscountCard key={discount.id} {...discount} className="h-full" />
+          ))}
         </div>
 
         {/* Mobile - Carousel Layout */}
