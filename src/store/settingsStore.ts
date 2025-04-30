@@ -11,6 +11,7 @@ interface SettingsState {
   hasUnsavedChanges: boolean;
   fetchSettings: () => Promise<void>;
   updateLocalSettings: (newSettings: Partial<AdminSettings>) => void;
+  updateSettings: (newSettings: Partial<AdminSettings>) => void; // Alias para mantener compatibilidad
   saveSettings: () => Promise<void>;
   discardChanges: () => void;
 }
@@ -35,12 +36,44 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   fetchSettings: async () => {
     try {
       set({ isLoading: true, error: null });
-
-      // Obtener la configuración del sistema
-      const { data: settingsData, error: settingsError } = await supabase
-        .from('system_settings')
-        .select('*')
-        .single();
+      
+      // Agregar un timeout más largo para evitar AbortError
+      const maxRetries = 3;
+      let retryCount = 0;
+      let settingsData = null;
+      let settingsError = null;
+      
+      // Intentar obtener la configuración con reintentos
+      while (retryCount < maxRetries && !settingsData) {
+        try {
+          // Obtener la configuración del sistema
+          const result = await supabase
+            .from('system_settings')
+            .select('*')
+            .single();
+            
+          settingsData = result.data;
+          settingsError = result.error;
+          
+          // Si hay datos, salir del bucle
+          if (settingsData) break;
+          
+          // Si hay un error que no sea de datos no encontrados, salir del bucle
+          if (settingsError && settingsError.code !== 'PGRST116') break;
+          
+        } catch (err) {
+          console.log(`Intento ${retryCount + 1} fallido:`, err);
+          settingsError = err;
+        }
+        
+        // Incrementar contador de reintentos
+        retryCount++;
+        
+        // Esperar antes del siguiente intento (espera exponencial)
+        if (retryCount < maxRetries) {
+          await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
+        }
+      }
 
       if (settingsError && settingsError.code !== 'PGRST116') {
         throw settingsError;
@@ -66,7 +99,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       const { data: emergencyContactsData, error: emergencyContactsError } = await supabase
         .from('emergency_contacts')
         .select('*')
-        .eq('is_active', true)
+        .eq('isActive', true)
         .order('priority');
 
       if (emergencyContactsError) throw emergencyContactsError;
@@ -131,6 +164,11 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       localSettings: updatedSettings,
       hasUnsavedChanges: true,
     });
+  },
+  
+  // Alias para mantener compatibilidad con código existente
+  updateSettings: (newSettings) => {
+    get().updateLocalSettings(newSettings);
   },
 
   saveSettings: async () => {

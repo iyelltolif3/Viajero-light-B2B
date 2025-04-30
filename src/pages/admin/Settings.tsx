@@ -14,7 +14,10 @@ import { useSettingsStore } from '@/store/settingsStore';
 import { X, Plus, Trash2, AlertCircle } from 'lucide-react';
 import { LogoUploader } from '@/components/ui/logo-uploader';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Separator } from '@/components/ui/separator';
+import { Textarea } from '@/components/ui/textarea';
 import { PlanForm } from '@/components/admin/PlanForm';
+import { BrandingForm } from '@/components/admin/BrandingForm';
 
 export default function AdminSettings() {
   const { plans, updatePlan, addPlan, deletePlan } = usePlansStore();
@@ -27,6 +30,9 @@ export default function AdminSettings() {
     }
   }, [plans]);
 
+  // Estado local para controlar cambios no guardados
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  
   // Prevent accidental navigation when there are unsaved changes
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
@@ -40,13 +46,85 @@ export default function AdminSettings() {
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [hasUnsavedChanges]);
 
+  // Copia local de la configuración
+  const [localSettings, setLocalSettings] = useState<Partial<AdminSettingsType>>(settings || {
+    id: '',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    brandName: '',
+    brandLogo: '',
+    primaryColor: '#3b82f6',
+    secondaryColor: '#10b981',
+    tertiaryColor: '#f59e0b',
+    zones: [],
+    ageRanges: [],
+    emergencyContacts: [],
+    content: {
+      id: '',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      discountSection: {
+        sectionTitle: 'Ofertas y Descuentos',
+        sectionSubtitle: 'Descubre nuestras mejores ofertas y descuentos especiales',
+        badgeText: 'Descuentos Especiales',
+        viewAllButtonText: 'Ver todas las ofertas',
+        discounts: []
+      },
+      heroSection: {
+        title: 'Bienvenido a nuestra plataforma',
+        subtitle: 'Encuentra los mejores servicios de asistencia en viaje',
+        ctaText: 'Explorar planes',
+        imageUrl: ''
+      }
+    },
+    notificationSettings: {
+      emailEnabled: false,
+      smsEnabled: false,
+      pushEnabled: false
+    },
+    paymentSettings: {
+      currency: 'USD',
+      taxRate: 0,
+      paymentMethods: [],
+      commissionRate: 0
+    },
+    notifications: [],
+    branding: {
+      logo: '',
+      companyName: '',
+      contactEmail: '',
+      supportPhone: '',
+      favicon: '',
+      primaryColor: '#3b82f6',
+      secondaryColor: '#10b981'
+    }
+  });
+
+  // Copia local de los planes
+  const [localPlans, setLocalPlans] = useState<Plan[]>(plans || []);
+
+  // Actualizar configuración local
+  const updateLocalSettings = (updates: Partial<AdminSettingsType>) => {
+    setLocalSettings(prev => ({ ...prev, ...updates }));
+    setHasUnsavedChanges(true);
+  };
+  
+  // Actualizar un plan en el estado local
+  const updateLocalPlan = (planId: string, updates: Partial<Plan>) => {
+    setLocalPlans(prev => prev.map(plan => 
+      plan.id === planId ? { ...plan, ...updates } : plan
+    ));
+    setHasUnsavedChanges(true);
+  };
+  
   const handleInputChange = (field: keyof AdminSettingsType, value: any) => {
     updateLocalSettings({ [field]: value });
   };
 
   const handleSave = async () => {
     try {
-      await saveSettings();
+      await updateSettings(localSettings);
+      setHasUnsavedChanges(false);
       toast({
         title: "Configuración guardada",
         description: "Los cambios han sido aplicados exitosamente.",
@@ -123,7 +201,19 @@ export default function AdminSettings() {
                       accent: '#e2e8f0'
                     }
                   },
-                  content: defaultContent,
+                  content: {
+                    heroSection: {
+                      title: 'Viaja seguro con nosotros',
+                      subtitle: 'Ofrecemos la mejor asistencia en viajes'
+                    },
+                    discountSection: {
+                      sectionTitle: 'Descuentos especiales',
+                      sectionSubtitle: 'Aprovecha estas ofertas por tiempo limitado',
+                      badgeText: 'Oferta',
+                      viewAllButtonText: 'Ver todas las ofertas',
+                      discounts: []
+                    }
+                  },
                   zones: [],
                   ageRanges: [],
                   emergencyContacts: []
@@ -139,14 +229,6 @@ export default function AdminSettings() {
     );
   }
 
-  const handleAddPlan = async () => {
-  const handleSave = () => {
-    toast({
-      title: "Configuración guardada",
-      description: "Los cambios han sido aplicados exitosamente.",
-    });
-  };
-
   const selectedPlan = plans?.find(p => p.id === selectedPlanId);
 
   const handleAddPlan = () => {
@@ -155,20 +237,23 @@ export default function AdminSettings() {
       name: 'Nuevo Plan',
       description: 'Descripción del nuevo plan',
       price: 0,
-      base_price: 0,
-      price_multiplier: 1,
-      price_detail: 'por día / por persona',
+      basePrice: 0,
+      priceMultiplier: 1,
+      priceDetail: 'por día / por persona',
       features: [],
       badge: '',
-      max_days: 30,
-      coverage_details: {
-        medical_coverage: 0,
-        luggage_coverage: 0,
-        cancellation_coverage: 0,
-        covid_coverage: false,
-        pre_existing_conditions: false,
-        adventure_sports: false,
+      maxDays: 30,
+      coverageDetails: {
+        medicalCoverage: 0,
+        luggageCoverage: 0,
+        cancellationCoverage: 0,
+        covidCoverage: false,
+        preExistingConditions: false,
+        adventureSports: false,
       },
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      isActive: true,
     };
     addPlan(newPlan);
     setSelectedPlanId(newPlan.id);
@@ -180,7 +265,7 @@ export default function AdminSettings() {
 
   const handleSavePlan = () => {
     if (selectedPlan) {
-      updateLocalPlan(selectedPlan.id, selectedPlan);
+      updatePlan(selectedPlan.id, selectedPlan);
       toast({
         title: "Plan guardado",
         description: "Los cambios han sido aplicados exitosamente.",
@@ -188,88 +273,112 @@ export default function AdminSettings() {
     }
   };
 
-  const selectedPlan = plans?.find(p => p.id === selectedPlanId);
-
   const handleUpdateZone = (zone: Zone, field: keyof Zone, value: any) => {
+    if (!localSettings.zones) return;
     const updatedZones = localSettings.zones.map((z) =>
       z.id === zone.id ? { ...z, [field]: value } : z
     );
-    handleInputChange('zones', updatedZones);
+    // Usar update directo en lugar de handleInputChange para evitar problemas de tipo
+    setLocalSettings({...localSettings, zones: updatedZones});
+    setHasUnsavedChanges(true);
   };
 
   const handleAddZone = () => {
     const newZone: Zone = {
       id: Date.now().toString(),
       name: '',
-      description: '',
-      price_multiplier: 1,
-      risk_level: 'low',
+      description: '', // Esta propiedad puede no existir en tu tipo Zone, ajústala según necesites
+      priceMultiplier: 1,
+      riskLevel: 'low',
       countries: [],
-      is_active: true,
-      order: localSettings.zones.length,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
+      isActive: true,
+      order: localSettings.zones?.length || 0,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     };
-    handleInputChange('zones', [...localSettings.zones, newZone]);
+    // Usar update directo para evitar problemas de tipo
+    setLocalSettings({
+      ...localSettings, 
+      zones: [...(localSettings.zones || []), newZone]
+    });
+    setHasUnsavedChanges(true);
   };
 
   const handleUpdateAgeRange = (range: AgeRange, field: keyof AgeRange, value: any) => {
+    if (!localSettings.ageRanges) return;
     const updatedRanges = localSettings.ageRanges.map((r) =>
       r.id === range.id ? { ...r, [field]: value } : r
     );
-    handleInputChange('ageRanges', updatedRanges);
+    // Usar update directo
+    setLocalSettings({...localSettings, ageRanges: updatedRanges});
+    setHasUnsavedChanges(true);
   };
 
   const handleAddAgeRange = () => {
-    const newRange: AgeRange = {
-      id: Date.now().toString(),
+    const newAgeRange = {
+      id: crypto.randomUUID(),
+      settingsId: localSettings.id || '',
       minAge: 0,
-      maxAge: 0,
-      price_multiplier: 1,
+      maxAge: 18,
+      priceMultiplier: 1.0,
       description: '',
-      is_active: true,
-      order: localSettings.ageRanges.length,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
+      isActive: true,
+      order: (localSettings.ageRanges?.length || 0) + 1,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     };
-    handleInputChange('ageRanges', [...localSettings.ageRanges, newRange]);
+
+    updateLocalSettings({
+      ageRanges: [...(localSettings.ageRanges || []), newAgeRange]
+    });
+    setHasUnsavedChanges(true);
   };
 
   const handleUpdateEmergencyContact = (contact: EmergencyContact, field: keyof EmergencyContact, value: any) => {
+    if (!localSettings.emergencyContacts) return;
     const updatedContacts = localSettings.emergencyContacts.map((c) =>
       c.id === contact.id ? { ...c, [field]: value } : c
     );
-    handleInputChange('emergencyContacts', updatedContacts);
+    // Usar update directo
+    setLocalSettings({...localSettings, emergencyContacts: updatedContacts});
+    setHasUnsavedChanges(true);
   };
 
   const handleAddEmergencyContact = () => {
-    const newContact: EmergencyContact = {
-      id: Date.now().toString(),
+    const newEmergencyContact = {
+      id: crypto.randomUUID(),
+      settingsId: localSettings.id || '',
       name: '',
       phone: '',
       email: '',
-      priority: localSettings.emergencyContacts.length + 1,
-      is_active: true,
+      country: '',
+      address: '',
+      priority: (localSettings.emergencyContacts?.length || 0) + 1,
+      isActive: true,
       description: '',
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     };
-    handleInputChange('emergencyContacts', [...localSettings.emergencyContacts, newContact]);
+
+    updateLocalSettings({
+      emergencyContacts: [...(localSettings.emergencyContacts || []), newEmergencyContact]
+    });
+    setHasUnsavedChanges(true);
   };
 
   return (
     <div className="container mx-auto py-8 px-4">
       <h1 className="text-3xl font-bold mb-8">Configuración del Sistema</h1>
 
-      <Tabs defaultValue={!plans?.length ? "branding" : "plans"} className="space-y-6">
-        <TabsList className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2">
+      <Tabs defaultValue="plans">
+        <TabsList className="grid w-full max-w-3xl grid-cols-7">
           <TabsTrigger value="plans">Planes</TabsTrigger>
           <TabsTrigger value="zones">Zonas</TabsTrigger>
-          <TabsTrigger value="age-ranges">Rangos de Edad</TabsTrigger>
-          <TabsTrigger value="emergency">Contactos de Emergencia</TabsTrigger>
+          <TabsTrigger value="age">Rangos de Edad</TabsTrigger>
+          <TabsTrigger value="emergency">Contactos</TabsTrigger>
           <TabsTrigger value="notifications">Notificaciones</TabsTrigger>
-          <TabsTrigger value="payment">Pagos</TabsTrigger>
-          <TabsTrigger value="branding">Marca</TabsTrigger>
+          <TabsTrigger value="brand">Marca</TabsTrigger>
+          <TabsTrigger value="discounts">Descuentos</TabsTrigger>
         </TabsList>
 
         <TabsContent value="plans">
@@ -755,50 +864,95 @@ export default function AdminSettings() {
                       />
                     ))}
                   </div>
-                  <div className="flex-1">
-                    <Label>SMS</Label>
+                  <div className="flex items-center space-x-2">
                     <Switch
-                      checked={settings.notifications.reminderEmails}
+                      id="reminder-emails"
+                      checked={Array.isArray(settings?.notifications) && settings.notifications.some(n => n.type === 'reminder-email' && n.active)}
                       onCheckedChange={(checked) => {
+                        // Buscar si existe una notificación de recordatorio por email o crear una nueva
+                        const updatedNotifications = Array.isArray(settings?.notifications) ? [...settings.notifications] : [];
+                        const reminderIndex = updatedNotifications.findIndex(n => n.type === 'reminder-email');
+                        
+                        if (reminderIndex >= 0) {
+                          updatedNotifications[reminderIndex] = {
+                            ...updatedNotifications[reminderIndex],
+                            active: checked
+                          };
+                        } else {
+                          updatedNotifications.push({
+                            id: crypto.randomUUID(),
+                            type: 'reminder-email',
+                            message: 'Recordatorio por email',
+                            active: checked
+                          });
+                        }
+                        
                         updateSettings({
-                          ...settings,
-                          notifications: {
-                            ...settings.notifications,
-                            reminderEmails: checked
-                          }
+                          notifications: updatedNotifications
                         });
                       }}
                     />
+                    <Label>Enviar notificaciones por email</Label>
                   </div>
                   <div className="flex-1">
                     <Label>Push</Label>
                     <Switch
-                      checked={settings.notifications.smsNotifications}
+                      checked={Array.isArray(settings?.notifications) && (settings.notifications || []).some(n => n.type === 'push' && n.active)}
                       onCheckedChange={(checked) => {
+                        // Buscar si existe una notificación de push o crear una nueva
+                        const updatedNotifications = Array.isArray(settings?.notifications) ? [...settings.notifications] : [];
+                        const pushIndex = updatedNotifications.findIndex(n => n.type === 'push');
+                        
+                        if (pushIndex >= 0) {
+                          updatedNotifications[pushIndex] = {
+                            ...updatedNotifications[pushIndex],
+                            active: checked
+                          };
+                        } else {
+                          updatedNotifications.push({
+                            id: crypto.randomUUID(),
+                            type: 'push',
+                            message: 'Notificación push',
+                            active: checked
+                          });
+                        }
+                        
                         updateSettings({
-                          ...settings,
-                          notifications: {
-                            ...settings.notifications,
-                            smsNotifications: checked
-                          }
+                          notifications: updatedNotifications
                         });
                       }}
                     />
                   </div>
+                  
                   <div className="flex items-center space-x-2">
                     <Switch
-                      checked={settings.notifications.whatsappNotifications}
+                      id="before-expiration"
+                      checked={Array.isArray(settings?.notifications) && (settings.notifications || []).some(n => n.type === 'expiration' && n.active)}
                       onCheckedChange={(checked) => {
+                        // Buscar si existe una notificación de expiración o crear una nueva
+                        const updatedNotifications = Array.isArray(settings?.notifications) ? [...settings.notifications] : [];
+                        const expirationIndex = updatedNotifications.findIndex(n => n.type === 'expiration');
+                        
+                        if (expirationIndex >= 0) {
+                          updatedNotifications[expirationIndex] = {
+                            ...updatedNotifications[expirationIndex],
+                            active: checked
+                          };
+                        } else {
+                          updatedNotifications.push({
+                            id: crypto.randomUUID(),
+                            type: 'expiration',
+                            message: 'Su plan está por expirar',
+                            active: checked
+                          });
+                        }
+                        
                         updateSettings({
-                          ...settings,
-                          notifications: {
-                            ...settings.notifications,
-                            whatsappNotifications: checked
-                          }
+                          notifications: updatedNotifications
                         });
                       }}
                     />
-                    <Label>Enviar notificaciones por WhatsApp</Label>
+                    <Label>Enviar notificaciones por expiración</Label>
                   </div>
                 </div>
               </div>
@@ -877,108 +1031,334 @@ export default function AdminSettings() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="branding">
+        <TabsContent value="brand">
+          <BrandingForm settings={settings} updateSettings={updateSettings} />
+        </TabsContent>
+
+        <TabsContent value="discounts">
           <Card>
             <CardHeader>
-              <CardTitle>Marca</CardTitle>
-              <CardDescription>
-                Configura la apariencia de tu marca
-              </CardDescription>
+              <CardTitle>Gestión de Descuentos</CardTitle>
+              <CardDescription>Administra los descuentos y ofertas que se mostrarán en la página principal</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
                 <div>
-                  <Label>Logo</Label>
+                  <Label htmlFor="sectionTitle">Título de la Sección</Label>
                   <Input
-                    value={settings.branding.companyName}
+                    id="sectionTitle"
+                    value={settings?.content?.discountSection?.sectionTitle || ''}
                     onChange={(e) => {
                       updateSettings({
                         ...settings,
-                        branding: {
-                          ...settings.branding,
-                          companyName: e.target.value
+                        content: {
+                          ...settings.content,
+                          discountSection: {
+                            ...settings.content.discountSection,
+                            sectionTitle: e.target.value
+                          }
+                        }
+                      });
+                    }}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="sectionSubtitle">Subtítulo de la Sección</Label>
+                  <Input
+                    id="sectionSubtitle"
+                    value={settings?.content?.discountSection?.sectionSubtitle || ''}
+                    onChange={(e) => {
+                      updateSettings({
+                        ...settings,
+                        content: {
+                          ...settings.content,
+                          discountSection: {
+                            ...settings.content.discountSection,
+                            sectionSubtitle: e.target.value
+                          }
+                        }
+                      });
+                    }}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="badgeText">Texto de la Insignia</Label>
+                  <Input
+                    id="badgeText"
+                    value={settings?.content?.discountSection?.badgeText || ''}
+                    onChange={(e) => {
+                      updateSettings({
+                        ...settings,
+                        content: {
+                          ...settings.content,
+                          discountSection: {
+                            ...settings.content.discountSection,
+                            badgeText: e.target.value
+                          }
+                        }
+                      });
+                    }}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="viewAllButtonText">Texto del Botón Ver Todos</Label>
+                  <Input
+                    id="viewAllButtonText"
+                    value={settings?.content?.discountSection?.viewAllButtonText || ''}
+                    onChange={(e) => {
+                      updateSettings({
+                        ...settings,
+                        content: {
+                          ...settings.content,
+                          discountSection: {
+                            ...settings.content.discountSection,
+                            viewAllButtonText: e.target.value
+                          }
                         }
                       });
                     }}
                   />
                 </div>
 
-                <LogoUploader
-                  currentLogo={settings.branding.logo}
-                  onLogoChange={(logo) => {
-                    updateSettings({
-                      ...settings,
-                      branding: {
-                        ...settings.branding,
-                        logo
-                      }
-                    });
-                  }}
-                />
-
+                <Separator className="my-4" />
+                
                 <div>
-                  <Label>Color Primario</Label>
-                  <ColorPicker
-                    color={settings.branding.primaryColor}
-                    onChange={(color) => {
-                      updateSettings({
-                        ...settings,
-                        branding: {
-                          ...settings.branding,
-                          primaryColor: color
-                        }
-                      });
-                    }}
-                  />
-                </div>
-                <div>
-                  <Label>Color Secundario</Label>
-                  <ColorPicker
-                    color={settings.branding.secondaryColor}
-                    onChange={(color) => {
-                      updateSettings({
-                        ...settings,
-                        branding: {
-                          ...settings.branding,
-                          secondaryColor: color
-                        }
-                      });
-                    }}
-                  />
-                </div>
-                <div>
-                  <Label>Color Secundario</Label>
-                  <Input
-                    type="email"
-                    value={settings.branding.contactEmail}
-                    onChange={(e) => {
-                      updateSettings({
-                        ...settings,
-                        branding: {
-                          ...settings.branding,
-                          contactEmail: e.target.value
-                        }
-                      });
-                    }}
-                  />
-                </div>
-                <div>
-                  <Label>Color de Acento</Label>
-                  <Input
-                    value={settings.branding.supportPhone}
-                    onChange={(e) => {
-                      updateSettings({
-                        ...settings,
-                        branding: {
-                          ...settings.branding,
-                          supportPhone: e.target.value
-                        }
-                      });
-                    }}
-                  />
+                  <div className="flex items-center justify-between mb-4">
+                    <Label>Descuentos Disponibles</Label>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const newDiscount = {
+                          id: Date.now().toString(),
+                          title: 'Nuevo Descuento',
+                          description: 'Descripción del descuento',
+                          code: 'DESC' + Math.floor(Math.random() * 1000),
+                          discountPercentage: 10,
+                          validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                          imageSrc: '',
+                          active: true
+                        };
+                        
+                        updateSettings({
+                          ...settings,
+                          content: {
+                            ...settings.content,
+                            discountSection: {
+                              ...settings.content.discountSection,
+                              discounts: [...(settings?.content?.discountSection?.discounts || []), newDiscount]
+                            }
+                          }
+                        });
+                      }}
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Agregar Descuento
+                    </Button>
+                  </div>
+                  
+                  {settings?.content?.discountSection?.discounts && settings.content.discountSection.discounts.length > 0 ? (
+                    <div className="space-y-4">
+                      {settings.content.discountSection.discounts.map((discount, index) => (
+                        <Card key={discount.id} className="p-4">
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <div className="font-medium">{discount.title}</div>
+                              <div className="text-sm text-muted-foreground">{discount.description}</div>
+                              <div className="mt-2 text-sm">Código: <span className="font-mono bg-muted px-1 rounded">{discount.code}</span></div>
+                              <div className="text-sm">Descuento: {discount.discountPercentage}%</div>
+                              <div className="text-sm">Válido hasta: {discount.validUntil}</div>
+                            </div>
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => {
+                                const updatedDiscounts = [...settings.content.discountSection.discounts];
+                                updatedDiscounts.splice(index, 1);
+                                updateSettings({
+                                  ...settings,
+                                  content: {
+                                    ...settings.content,
+                                    discountSection: {
+                                      ...settings.content.discountSection,
+                                      discounts: updatedDiscounts
+                                    }
+                                  }
+                                });
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                          <div className="grid grid-cols-2 gap-4 mt-4">
+                            <div>
+                              <Label htmlFor={`discount-title-${index}`}>Título</Label>
+                              <Input
+                                id={`discount-title-${index}`}
+                                value={discount.title}
+                                onChange={(e) => {
+                                  const updatedDiscounts = [...settings.content.discountSection.discounts];
+                                  updatedDiscounts[index] = {
+                                    ...updatedDiscounts[index],
+                                    title: e.target.value
+                                  };
+                                  updateSettings({
+                                    ...settings,
+                                    content: {
+                                      ...settings.content,
+                                      discountSection: {
+                                        ...settings.content.discountSection,
+                                        discounts: updatedDiscounts
+                                      }
+                                    }
+                                  });
+                                }}
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor={`discount-code-${index}`}>Código</Label>
+                              <Input
+                                id={`discount-code-${index}`}
+                                value={discount.code}
+                                onChange={(e) => {
+                                  const updatedDiscounts = [...settings.content.discountSection.discounts];
+                                  updatedDiscounts[index] = {
+                                    ...updatedDiscounts[index],
+                                    code: e.target.value
+                                  };
+                                  updateSettings({
+                                    ...settings,
+                                    content: {
+                                      ...settings.content,
+                                      discountSection: {
+                                        ...settings.content.discountSection,
+                                        discounts: updatedDiscounts
+                                      }
+                                    }
+                                  });
+                                }}
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor={`discount-percentage-${index}`}>Porcentaje</Label>
+                              <Input
+                                id={`discount-percentage-${index}`}
+                                type="number"
+                                value={discount.discountPercentage}
+                                onChange={(e) => {
+                                  const updatedDiscounts = [...settings.content.discountSection.discounts];
+                                  updatedDiscounts[index] = {
+                                    ...updatedDiscounts[index],
+                                    discountPercentage: Number(e.target.value)
+                                  };
+                                  updateSettings({
+                                    ...settings,
+                                    content: {
+                                      ...settings.content,
+                                      discountSection: {
+                                        ...settings.content.discountSection,
+                                        discounts: updatedDiscounts
+                                      }
+                                    }
+                                  });
+                                }}
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor={`discount-validUntil-${index}`}>Válido hasta</Label>
+                              <Input
+                                id={`discount-validUntil-${index}`}
+                                type="date"
+                                value={discount.validUntil}
+                                onChange={(e) => {
+                                  const updatedDiscounts = [...settings.content.discountSection.discounts];
+                                  updatedDiscounts[index] = {
+                                    ...updatedDiscounts[index],
+                                    validUntil: e.target.value
+                                  };
+                                  updateSettings({
+                                    ...settings,
+                                    content: {
+                                      ...settings.content,
+                                      discountSection: {
+                                        ...settings.content.discountSection,
+                                        discounts: updatedDiscounts
+                                      }
+                                    }
+                                  });
+                                }}
+                              />
+                            </div>
+                            <div className="col-span-2">
+                              <Label htmlFor={`discount-description-${index}`}>Descripción</Label>
+                              <Textarea
+                                id={`discount-description-${index}`}
+                                value={discount.description}
+                                onChange={(e) => {
+                                  const updatedDiscounts = [...settings.content.discountSection.discounts];
+                                  updatedDiscounts[index] = {
+                                    ...updatedDiscounts[index],
+                                    description: e.target.value
+                                  };
+                                  updateSettings({
+                                    ...settings,
+                                    content: {
+                                      ...settings.content,
+                                      discountSection: {
+                                        ...settings.content.discountSection,
+                                        discounts: updatedDiscounts
+                                      }
+                                    }
+                                  });
+                                }}
+                              />
+                            </div>
+                            <div className="col-span-2">
+                              <Label htmlFor={`discount-active-${index}`} className="flex items-center space-x-2 cursor-pointer">
+                                <Switch
+                                  id={`discount-active-${index}`}
+                                  checked={discount.active}
+                                  onCheckedChange={(checked) => {
+                                    const updatedDiscounts = [...settings.content.discountSection.discounts];
+                                    updatedDiscounts[index] = {
+                                      ...updatedDiscounts[index],
+                                      active: checked
+                                    };
+                                    updateSettings({
+                                      ...settings,
+                                      content: {
+                                        ...settings.content,
+                                        discountSection: {
+                                          ...settings.content.discountSection,
+                                          discounts: updatedDiscounts
+                                        }
+                                      }
+                                    });
+                                  }}
+                                />
+                                <span>Activo</span>
+                              </Label>
+                            </div>
+                          </div>
+                        </Card>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center p-8 border border-dashed rounded-lg">
+                      <div className="text-muted-foreground">No hay descuentos configurados</div>
+                    </div>
+                  )}
                 </div>
               </div>
             </CardContent>
+            <CardFooter>
+              <Button onClick={() => {
+                toast({
+                  title: "Cambios guardados",
+                  description: "La configuración de descuentos ha sido actualizada."
+                });
+              }}>Guardar Cambios</Button>
+            </CardFooter>
           </Card>
         </TabsContent>
       </Tabs>

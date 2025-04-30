@@ -61,12 +61,18 @@ interface DiscountSectionProps {
 
 export function DiscountSection({ className }: DiscountSectionProps) {
   const { content } = useSettingsStore();
-  const { sectionTitle, sectionSubtitle, badgeText, viewAllButtonText, discounts } = content.discountSection;
+  
+  // Si content o discountSection no existen, no renderizar nada
+  if (!content || !content.discountSection) {
+    return null;
+  }
+  
+  const { sectionTitle, sectionSubtitle, badgeText, viewAllButtonText, discounts = [] } = content.discountSection;
 
-  // Filter active discounts and sort by order
+  // Filter active discounts and sort by order - con verificación adicional
   const activeDiscounts = discounts
-    .filter(discount => discount.active)
-    .sort((a, b) => a.order - b.order);
+    ?.filter(discount => discount?.active) 
+    ?.sort((a, b) => (a.order || 0) - (b.order || 0)) || [];
 
   // Mobile carousel items
   const mobileCarouselItems = activeDiscounts.map((discount) => (

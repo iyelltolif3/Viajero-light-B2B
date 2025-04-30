@@ -1,6 +1,6 @@
 import { Navigate, Outlet } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { AdminNavbar } from '@/components/AdminNavbar';
+import { AdminNavbar } from '@/components/admin/AdminNavbar';
 
 export function AdminLayout() {
   const { user, isAdmin } = useAuth();

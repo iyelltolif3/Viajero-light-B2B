@@ -49,8 +49,8 @@ export function PlanForm({ plan, isSelected, onSelect, onChange }: PlanFormProps
             <h3 className="text-lg font-semibold">{plan.name}</h3>
           </div>
           <Switch
-            checked={plan.is_active}
-            onCheckedChange={(checked) => onChange({ is_active: checked })}
+            checked={plan.isActive}
+            onCheckedChange={(checked) => onChange({ isActive: checked })}
           />
         </div>
 
@@ -77,42 +77,42 @@ export function PlanForm({ plan, isSelected, onSelect, onChange }: PlanFormProps
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="price">Precio Base</Label>
+                <Label htmlFor="basePrice">Precio Base</Label>
                 <Input
-                  id="price"
+                  id="basePrice"
                   type="number"
-                  value={plan.base_price}
-                  onChange={(e) => onChange({ base_price: Number(e.target.value) })}
+                  value={plan.basePrice}
+                  onChange={(e) => onChange({ basePrice: Number(e.target.value) })}
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="price_multiplier">Multiplicador de Precio</Label>
+                <Label htmlFor="priceMultiplier">Multiplicador de Precio</Label>
                 <Input
-                  id="price_multiplier"
+                  id="priceMultiplier"
                   type="number"
                   step="0.1"
-                  value={plan.price_multiplier}
-                  onChange={(e) => onChange({ price_multiplier: Number(e.target.value) })}
+                  value={plan.priceMultiplier}
+                  onChange={(e) => onChange({ priceMultiplier: Number(e.target.value) })}
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="max_days">Días Máximos</Label>
+                <Label htmlFor="maxDays">Máximo de Días</Label>
                 <Input
-                  id="max_days"
+                  id="maxDays"
                   type="number"
-                  value={plan.max_days}
-                  onChange={(e) => onChange({ max_days: Number(e.target.value) })}
+                  value={plan.maxDays}
+                  onChange={(e) => onChange({ maxDays: Number(e.target.value) })}
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="price_detail">Detalle de Precio</Label>
+                <Label htmlFor="priceDetail">Detalle de Precio</Label>
                 <Input
-                  id="price_detail"
-                  value={plan.price_detail}
-                  onChange={(e) => onChange({ price_detail: e.target.value })}
+                  id="priceDetail"
+                  value={plan.priceDetail}
+                  onChange={(e) => onChange({ priceDetail: e.target.value })}
                   placeholder="Ej: por día / por persona"
                 />
               </div>
@@ -163,11 +163,11 @@ export function PlanForm({ plan, isSelected, onSelect, onChange }: PlanFormProps
                   <Input
                     id="medical_coverage"
                     type="number"
-                    value={plan.coverage_details.medical_coverage}
+                    value={plan.coverageDetails?.medicalCoverage || 0}
                     onChange={(e) => onChange({
-                      coverage_details: {
-                        ...plan.coverage_details,
-                        medical_coverage: Number(e.target.value)
+                      coverageDetails: {
+                        ...plan.coverageDetails,
+                        medicalCoverage: Number(e.target.value)
                       }
                     })}
                   />
@@ -178,11 +178,11 @@ export function PlanForm({ plan, isSelected, onSelect, onChange }: PlanFormProps
                   <Input
                     id="luggage_coverage"
                     type="number"
-                    value={plan.coverage_details.luggage_coverage}
+                    value={plan.coverageDetails?.luggageCoverage || 0}
                     onChange={(e) => onChange({
-                      coverage_details: {
-                        ...plan.coverage_details,
-                        luggage_coverage: Number(e.target.value)
+                      coverageDetails: {
+                        ...plan.coverageDetails,
+                        luggageCoverage: Number(e.target.value)
                       }
                     })}
                   />
@@ -193,11 +193,11 @@ export function PlanForm({ plan, isSelected, onSelect, onChange }: PlanFormProps
                   <Input
                     id="cancellation_coverage"
                     type="number"
-                    value={plan.coverage_details.cancellation_coverage}
+                    value={plan.coverageDetails?.cancellationCoverage || 0}
                     onChange={(e) => onChange({
-                      coverage_details: {
-                        ...plan.coverage_details,
-                        cancellation_coverage: Number(e.target.value)
+                      coverageDetails: {
+                        ...plan.coverageDetails,
+                        cancellationCoverage: Number(e.target.value)
                       }
                     })}
                   />
@@ -208,11 +208,11 @@ export function PlanForm({ plan, isSelected, onSelect, onChange }: PlanFormProps
                 <div className="flex items-center space-x-2">
                   <Switch
                     id="covid_coverage"
-                    checked={plan.coverage_details.covid_coverage}
+                    checked={plan.coverageDetails?.covidCoverage}
                     onCheckedChange={(checked) => onChange({
-                      coverage_details: {
-                        ...plan.coverage_details,
-                        covid_coverage: checked
+                      coverageDetails: {
+                        ...plan.coverageDetails,
+                        covidCoverage: checked
                       }
                     })}
                   />
@@ -222,11 +222,11 @@ export function PlanForm({ plan, isSelected, onSelect, onChange }: PlanFormProps
                 <div className="flex items-center space-x-2">
                   <Switch
                     id="pre_existing_conditions"
-                    checked={plan.coverage_details.pre_existing_conditions}
+                    checked={plan.coverageDetails?.preExistingConditions}
                     onCheckedChange={(checked) => onChange({
-                      coverage_details: {
-                        ...plan.coverage_details,
-                        pre_existing_conditions: checked
+                      coverageDetails: {
+                        ...plan.coverageDetails,
+                        preExistingConditions: checked
                       }
                     })}
                   />
@@ -236,11 +236,11 @@ export function PlanForm({ plan, isSelected, onSelect, onChange }: PlanFormProps
                 <div className="flex items-center space-x-2">
                   <Switch
                     id="adventure_sports"
-                    checked={plan.coverage_details.adventure_sports}
+                    checked={plan.coverageDetails?.adventureSports}
                     onCheckedChange={(checked) => onChange({
-                      coverage_details: {
-                        ...plan.coverage_details,
-                        adventure_sports: checked
+                      coverageDetails: {
+                        ...plan.coverageDetails,
+                        adventureSports: checked
                       }
                     })}
                   />

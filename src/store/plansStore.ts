@@ -66,11 +66,15 @@ export const usePlansStore = create<PlansStore>((set, get) => ({
 
   updatePlan: async (planId, updates) => {
     try {
-      set({ isLoading: true, error: null });
+      set({ is_loading: true, error: null });
 
+      // Convertir de camelCase a snake_case para la base de datos
+      const updatesToSend = transformObjectToSnakeCase(updates);
+      console.log('Updating plan with data:', updatesToSend);
+      
       const { error: updateError } = await supabase
         .from('plans')
-        .update(updates)
+        .update(updatesToSend)
         .eq('id', planId);
 
       if (updateError) throw updateError;
@@ -107,7 +111,7 @@ export const usePlansStore = create<PlansStore>((set, get) => ({
 
       set((state) => ({
         plans: state.plans.filter((plan) => plan.id !== planId),
-        isLoading: false,
+        is_loading: false,
         error: null,
       }));
 
@@ -129,11 +133,15 @@ export const usePlansStore = create<PlansStore>((set, get) => ({
 
   addPlan: async (plan) => {
     try {
-      set({ isLoading: true, error: null });
+      set({ is_loading: true, error: null });
 
+      // Convertir de camelCase a snake_case para la base de datos
+      const planToInsert = transformObjectToSnakeCase(plan);
+      console.log('Inserting plan with data:', planToInsert);
+      
       const { error: addError } = await supabase
         .from('plans')
-        .insert(plan);
+        .insert(planToInsert);
 
       if (addError) throw addError;
 
@@ -147,7 +155,7 @@ export const usePlansStore = create<PlansStore>((set, get) => ({
 
     } catch (error) {
       console.error('Error adding plan:', error);
-      set({ isLoading: false, error: 'Error al agregar el plan' });
+      set({ is_loading: false, error: 'Error al agregar el plan' });
       toast({
         title: "Error",
         description: "No se pudo agregar el plan",

@@ -1,22 +1,44 @@
-import { useState } from 'react';
-import { Search, MapPin } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { Search, MapPin, Calendar, Users, ArrowRight, Globe, Shield, Phone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import Carousel from './ui/carousel-custom';
+import { Input } from '@/components/ui/input';
 import DestinationSelector from './DestinationSelector';
 import DateSelector from './DateSelector';
-import TravelQuotes from './TravelQuotes';
-import { Input } from './ui/input';
 import TravelerSelector from './TravelerSelector';
-import { calculateQuote } from '@/lib/pricing';
-import { QuoteFormData, QuoteCalculationParams } from '@/types';
-import { useAuth } from '@/contexts/AuthContext';
+import { QuoteFormData } from '@/types';
 import { useNavigate } from 'react-router-dom';
 import { toast } from '@/components/ui/use-toast';
+import { useSettingsStore } from '@/store/settingsStore';
 
 interface HeroSectionProps {
   className?: string;
 }
+
+// Función para obtener un color más oscuro a partir de un hex
+const getDarkerColor = (hex: string): string => {
+  // Validar formato hex
+  if (!hex || !hex.startsWith('#') || hex.length !== 7) {
+    return '#b91c1c'; // Fallback a un rojo oscuro
+  }
+
+  try {
+    // Convertir hex a RGB
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    
+    // Oscurecer los valores (multiplicar por 0.8 para obtener un 20% más oscuro)
+    const darkerR = Math.floor(r * 0.8);
+    const darkerG = Math.floor(g * 0.8);
+    const darkerB = Math.floor(b * 0.8);
+    
+    // Convertir de nuevo a hex
+    return `#${darkerR.toString(16).padStart(2, '0')}${darkerG.toString(16).padStart(2, '0')}${darkerB.toString(16).padStart(2, '0')}`;
+  } catch (error) {
+    return '#b91c1c'; // Fallback a un rojo oscuro en caso de error
+  }
+};
 
 export function HeroSection({ className }: HeroSectionProps) {
   // State for form data
@@ -27,17 +49,13 @@ export function HeroSection({ className }: HeroSectionProps) {
       departureDate: undefined,
       returnDate: undefined,
     },
-    travelers: [{ age: 18 }]
+    travelers: [{ age: 35 }]
   });
 
   const navigate = useNavigate();
-
-  // Background carousel images
-  const backgroundImages = [
-    <div key="image1" className="w-full h-full bg-cover bg-center" style={{ backgroundImage: "url('https://images.unsplash.com/photo-1469474968028-56623f02e42e?auto=format&fit=crop&q=80')" }} />,
-    <div key="image2" className="w-full h-full bg-cover bg-center" style={{ backgroundImage: "url('https://images.unsplash.com/photo-1482938289607-e9573fc25ebb?auto=format&fit=crop&q=80')" }} />,
-    <div key="image3" className="w-full h-full bg-cover bg-center" style={{ backgroundImage: "url('https://images.unsplash.com/photo-1501854140801-50d01698950b?auto=format&fit=crop&q=80')" }} />,
-  ];
+  
+  // Obtener la configuración de colores del store
+  const { settings } = useSettingsStore();
   
   // Function to handle form submission
   const handleSubmit = (e: React.FormEvent) => {
@@ -72,142 +90,166 @@ export function HeroSection({ className }: HeroSectionProps) {
     });
   }
 
+  // Obtener los colores para el gradiente
+  const primaryColor = useMemo(() => {
+    return settings?.branding?.primaryColor || '#ef4444';
+  }, [settings?.branding?.primaryColor]);
+  
+  const darkerPrimaryColor = useMemo(() => {
+    return getDarkerColor(primaryColor);
+  }, [primaryColor]);
+
   return (
-    <section className={cn("relative min-h-screen flex flex-col", className)}>
-      {/* Background Carousel */}
-      <div className="absolute inset-0 z-0">
-        <Carousel
-          items={backgroundImages}
-          controls={false}
-          animation="fade"
-          interval={7000}
-        />
-        {/* Gradient overlay */}
-        <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/30 to-black/50 z-10 dark:from-black/60 dark:via-black/50 dark:to-black/70" />
-      </div>
-
-      {/* Hero Content */}
-      <div className="relative z-10 flex-1 flex flex-col justify-center items-center px-4 py-16 md:py-24">
-        <div className="text-center mb-8 md:mb-12 max-w-4xl mx-auto animate-fade-in">
-          <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-6 tracking-tight">
-            ¡COTIZA AHORA TU ASISTENCIA DE VIAJE!
-          </h1>
-          <p className="text-lg md:text-xl text-white/90 max-w-2xl mx-auto">
-          Explora sin límites con seguridad: nosotros protegemos tus planes para que tus únicas compañías sean la aventura y la tranquilidad
-          </p>
-        </div>
-
-        {/* Search Form */}
-        <div className="w-full max-w-[1200px] mx-auto px-4">
-          <form onSubmit={handleSubmit}>
-            {/* Main Form Card */}
-            <div className="bg-white/95 dark:bg-gray-900/95 rounded-[20px] shadow-xl p-4 sm:p-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-[1fr_1fr_1.5fr_auto_auto] gap-4 items-end">
-                {/* Origin Country */}
-                <div className="w-full">
-                  <label className="block text-sm font-semibold mb-1.5 text-gray-700 dark:text-gray-300">
-                    País de origen
-                  </label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <MapPin className="h-5 w-5 text-travel-600" />
-                    </div>
-                    <Input 
-                      value={formData.origin}
-                      readOnly 
-                      className="w-full pl-10 h-12 bg-gray-50 border-gray-200 rounded-lg text-gray-900"
-                    />
-                  </div>
-                </div>
-
-                {/* Destination Country */}
-                <div className="w-full">
-                  <label className="block text-sm font-semibold mb-1.5 text-gray-700 dark:text-gray-300">
-                    País de destino
-                  </label>
-                  <DestinationSelector
-                    label="¿A dónde viajas?"
-                    placeholder="¿A dónde viajas?"
-                    onSelect={(value) => {
-                      console.log('Destino seleccionado:', value);
-                      setFormData(prev => ({ ...prev, destination: value }));
-                    }}
-                    value={formData.destination}
-                    className="w-full [&_button]:h-12"
-                  />
-                </div>
-
-                {/* Dates */}
-                <div className="w-full">
-                  <DateSelector
-                    onDatesChange={(dates) => setFormData({ ...formData, dates })}
-                    className="w-full [&_button]:h-12"
-                  />
-                </div>
-
-                {/* Travelers */}
-                <div className="w-full">
-                  <label className="block text-sm font-semibold mb-1.5 text-gray-700 dark:text-gray-300">
-                    Viajeros
-                  </label>
-                  <TravelerSelector
-                    onTravelersChange={(travelers) => setFormData({ ...formData, travelers })}
-                    className="w-full [&_button]:h-12"
-                  />
-                </div>
-
-                {/* Submit Button */}
-                <div className="w-full lg:w-auto">
-                  <Button
-                    type="submit"
-                    className="w-full bg-travel-600/90 hover:bg-travel-700 text-white font-medium h-12 rounded-lg transition-all duration-200 ease-in-out transform hover:scale-[1.02] text-sm"
-                  >
-                    <Search className="h-4 w-4" />
-                  </Button>
-                </div>
+    <section className={cn("flex flex-col", className)}>
+      {/* Hero Header con gradiente dinámico basado en color de marca */}
+      <div 
+        className="bg-gradient-to-r relative overflow-hidden"
+        style={{
+          background: `linear-gradient(to right, ${primaryColor}, ${darkerPrimaryColor})`
+        }}
+      >
+        {/* Círculos decorativos con colores dinámicos */}
+        <div className="absolute -right-16 -top-16 w-64 h-64 rounded-full" style={{ backgroundColor: `${primaryColor}30` }}></div>
+        <div className="absolute -left-20 bottom-0 w-40 h-40 rounded-full" style={{ backgroundColor: `${primaryColor}20` }}></div>
+        
+        <div className="container mx-auto px-4 py-12 md:py-16 relative z-10">
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 items-center">
+            {/* Texto principal */}
+            <div className="lg:col-span-2 text-white space-y-6">
+              <div>
+                <h1 className="text-3xl md:text-4xl xl:text-5xl font-bold leading-tight tracking-tight">
+                  TU PLAN ES VIAJAR
+                </h1>
+                <p className="text-xl md:text-2xl font-bold mt-2">EL NUESTRO, CUIDARTE</p>
+              </div>
+              
+              <div className="rounded-lg p-4 inline-block" style={{ backgroundColor: `${darkerPrimaryColor}40` }}>
+                <div className="text-2xl md:text-3xl font-bold mb-1">35% OFF</div>
+                <div className="text-lg">12 Cuotas sin interés</div>
               </div>
             </div>
-          </form>
-        </div>
-        
-        {/* Feature Highlight Section */}
-        <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-5xl px-4">
-          <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 text-center text-white border border-white/20 hover:bg-white/20 transition-colors duration-200">
-            <div className="mx-auto w-16 h-16 bg-travel-600 rounded-xl flex items-center justify-center mb-4">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-              </svg>
+
+            {/* Formulario de cotización */}
+            <div className="lg:col-span-3">
+              <div className="bg-white rounded-xl shadow-xl overflow-hidden">
+                <form onSubmit={handleSubmit} className="p-6">
+                  <h2 className="text-xl font-bold text-gray-800 mb-6">Cotiza tu asistencia al viajero</h2>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    {/* País de origen */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">País de origen</label>
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                          <MapPin className="h-5 w-5 text-red-600" />
+                        </div>
+                        <Input 
+                          value={formData.origin}
+                          readOnly 
+                          className="w-full pl-10 h-12 bg-gray-50 border border-gray-200 rounded-md text-gray-900"
+                        />
+                      </div>
+                    </div>
+
+                    {/* País de destino */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">País de destino</label>
+                      <DestinationSelector
+                        label="¿A dónde viajas?"
+                        placeholder="¿A dónde viajas?"
+                        onSelect={(value) => setFormData(prev => ({ ...prev, destination: value }))}
+                        value={formData.destination}
+                        className="w-full [&_button]:h-12 [&_button]:border [&_button]:border-gray-200 [&_button]:rounded-md"
+                      />
+                    </div>
+                    
+                    {/* Fechas de viaje */}
+                    <div className="md:col-span-2">
+                      <div className="relative">
+                        <DateSelector
+                          onDatesChange={(dates) => setFormData(prev => ({ ...prev, dates }))}
+                          className="w-full [&_button]:h-12 [&_button]:border [&_button]:border-gray-200 [&_button]:rounded-md"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Viajeros */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Viajeros</label>
+                      <TravelerSelector
+                        onTravelersChange={(travelers) => setFormData(prev => ({ ...prev, travelers }))}
+                        className="w-full [&_button]:h-12 [&_button]:border [&_button]:border-gray-200 [&_button]:rounded-md"
+                      />
+                    </div>
+
+                    {/* Botón de cotizar */}
+                    <div className="flex items-end">
+                      <Button
+                        type="submit"
+                        className="w-full h-12 bg-red-600 hover:bg-red-700 text-white font-medium rounded-md border-0 flex items-center justify-center gap-2"
+                      >
+                        Cotizar <ArrowRight className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </form>
+              </div>
             </div>
-            <h3 className="text-lg font-bold mb-2">Pérdida de equipaje</h3>
-            <p className="text-sm text-white/90">Cobertura por pérdida o demora de equipaje durante tu viaje.</p>
-          </div>
-          
-          <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 text-center text-white border border-white/20 hover:bg-white/20 transition-colors duration-200">
-            <div className="mx-auto w-16 h-16 bg-travel-600 rounded-xl flex items-center justify-center mb-4">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-              </svg>
-            </div>
-            <h3 className="text-lg font-bold mb-2">Atención médica por accidente</h3>
-            <p className="text-sm text-white/90">Asistencia médica durante emergencias en tu viaje.</p>
-          </div>
-          
-          <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 text-center text-white border border-white/20 hover:bg-white/20 transition-colors duration-200">
-            <div className="mx-auto w-16 h-16 bg-travel-600 rounded-xl flex items-center justify-center mb-4">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-              </svg>
-            </div>
-            <h3 className="text-lg font-bold mb-2">Cancelación de vuelo</h3>
-            <p className="text-sm text-white/90">Reembolso por cancelaciones inesperadas de vuelos.</p>
           </div>
         </div>
       </div>
-      
-      {/* Quote Bar */}
-      <div className="relative z-20 mt-auto mx-4 md:mx-8 lg:mx-16 mb-8">
-        <TravelQuotes className="rounded-xl" />
+
+      {/* Sección de beneficios */}
+      <div className="bg-white py-12">
+        <div className="container mx-auto px-4">
+          <h2 className="text-2xl md:text-3xl font-bold text-center text-gray-800 mb-12">Asistencia al viajero, ¿qué es y por qué la necesitas?</h2>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div className="bg-gray-50 rounded-xl p-6 shadow-sm border border-gray-100 flex flex-col items-center text-center">
+              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-4">
+                <Shield className="h-8 w-8 text-red-600" />
+              </div>
+              <h3 className="text-xl font-semibold mb-3">Cobertura médica</h3>
+              <p className="text-gray-600">Gastos médicos por enfermedad o accidente durante tu viaje, incluyendo atención hospitalaria y medicamentos.</p>
+            </div>
+            
+            <div className="bg-gray-50 rounded-xl p-6 shadow-sm border border-gray-100 flex flex-col items-center text-center">
+              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-4">
+                <Globe className="h-8 w-8 text-red-600" />
+              </div>
+              <h3 className="text-xl font-semibold mb-3">Asistencia global</h3>
+              <p className="text-gray-600">Servicio de asistencia disponible las 24 horas, los 7 días de la semana en más de 100 países del mundo.</p>
+            </div>
+            
+            <div className="bg-gray-50 rounded-xl p-6 shadow-sm border border-gray-100 flex flex-col items-center text-center">
+              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-4">
+                <Phone className="h-8 w-8 text-red-600" />
+              </div>
+              <h3 className="text-xl font-semibold mb-3">Emergencias 24/7</h3>
+              <p className="text-gray-600">Asistencia telefónica y por videollamada ante cualquier emergencia durante tu viaje, en tu idioma.</p>
+            </div>
+          </div>
+        </div>
       </div>
+
+      {/* Banner promocional */}
+      <div className="bg-gray-100 py-8">
+        <div className="container mx-auto px-4">
+          <div className="bg-gradient-to-r from-red-600 to-red-700 rounded-xl py-6 px-8 flex flex-col md:flex-row items-center justify-between">
+            <div className="text-white text-center md:text-left mb-4 md:mb-0">
+              <h3 className="text-xl font-bold">¿Por qué elegir nuestra asistencia?</h3>
+              <p className="text-white/90">Más de 1 millón de viajeros nos han elegido para proteger sus viajes</p>
+            </div>
+            <Button 
+              onClick={() => navigate('/planes')} 
+              className="bg-white text-red-600 hover:bg-gray-100 font-medium rounded-md border-0">
+              Ver todos los planes
+            </Button>
+          </div>
+        </div>
+      </div>
+
+
     </section>
   );
 }

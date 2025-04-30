@@ -33,9 +33,9 @@ export function AdminNavbar() {
     },
     {
       name: 'Asistencias',
-      href: '/admin/assistance',
+      href: '/admin/assistances',
       icon: Headphones,
-      current: location.pathname === '/admin/assistance'
+      current: location.pathname === '/admin/assistances'
     },
     {
       name: 'Configuración',

@@ -50,9 +50,9 @@ export interface Plan {
     preExistingConditions: boolean;
     adventureSports: boolean;
   };
-  created_at: string;
-  updated_at: string;
-  is_active: boolean;
+  createdAt: string;
+  updatedAt: string;
+  isActive: boolean;
 }
 
 export interface Voucher {

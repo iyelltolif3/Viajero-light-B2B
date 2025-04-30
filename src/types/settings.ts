@@ -19,19 +19,32 @@ export interface AdminSettings extends BaseModel {
     currency: string;
     taxRate: number;
     paymentMethods: string[];
+    commissionRate?: number; // Añadido para soportar la tasa de comisión
   };
   notifications: {
     id: string;
     type: string;
     message: string;
     active: boolean;
+    beforeExpiration?: boolean; // Para notificaciones previas a expiración
+    reminderEmails?: boolean; // Para correos de recordatorio
+    smsNotifications?: boolean; // Para notificaciones SMS
+    whatsappNotifications?: boolean; // Para notificaciones WhatsApp
   }[];
   branding: {
     logo: string;
     companyName: string;
     contactEmail: string;
     supportPhone: string;
+    favicon?: string; // Para el favicon del sitio
+    primaryColor?: string; // Color primario en branding
+    secondaryColor?: string; // Color secundario en branding
   };
+  // Nuevas propiedades para alinear con el uso en el código
+  content?: ContentSettings;
+  zones?: Zone[];
+  ageRanges?: AgeRange[];
+  emergencyContacts?: EmergencyContact[];
 }
 
 export interface EmergencyContact extends BaseModel {
@@ -43,6 +56,7 @@ export interface EmergencyContact extends BaseModel {
   address: string;
   priority: number;
   isActive: boolean;
+  description?: string; // Campo opcional para soportar la descripción
 }
 
 export interface NotificationSettings {
@@ -73,6 +87,8 @@ export interface AgeRange extends BaseModel {
   maxAge: number;
   priceMultiplier: number;
   isActive: boolean;
+  description?: string; // Campo opcional para soportar la descripción
+  order?: number; // Propiedad para definir el orden
 }
 
 export interface ContentSettings extends BaseModel {
@@ -88,6 +104,22 @@ export interface ContentSettings extends BaseModel {
       code: string;
       discountPercentage: number;
       validUntil: string;
+      active?: boolean;
+      order?: number;
+      imageSrc?: string;
     }>;
   };
+  heroSection?: {
+    title: string;
+    subtitle: string;
+    ctaText: string;
+    imageUrl: string;
+  };
+}
+
+export interface EndpointConfig {
+  url: string;
+  method: string;
+  headers?: Record<string, string>;
+  params?: Record<string, any>;
 }
