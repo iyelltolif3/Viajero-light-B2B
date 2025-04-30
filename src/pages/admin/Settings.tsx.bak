@@ -1305,32 +1305,19 @@ export default function AdminSettings() {
                                       ...prev.content,
                                       discountSection: {
                                         ...prev.content?.discountSection,
-                                        discounts: updatedDiscounts
-                                      }
-                                    }
-                                  }));
-                                  setHasUnsavedChanges(true);
-                                }}
-                              />
-                            </div>
-                            <div>
-                              <Label htmlFor={`discount-validUntil-${index}`}>Válido hasta</Label>
-                              <Input
-                                id={`discount-validUntil-${index}`}
-                                type="date"
                                 value={discount.validUntil}
                                 onChange={(e) => {
-                                  const updatedDiscounts = [...localSettings.content.discountSection.discounts];
+                                  const updatedDiscounts = [...settings.content.discountSection.discounts];
                                   updatedDiscounts[index] = {
                                     ...updatedDiscounts[index],
                                     validUntil: e.target.value
                                   };
-                                  setLocalSettings(prev => ({
-                                    ...prev,
+                                  updateSettings({
+                                    ...settings,
                                     content: {
-                                      ...prev.content,
+                                      ...settings.content,
                                       discountSection: {
-                                        ...prev.content?.discountSection,
+                                        ...settings.content.discountSection,
                                         discounts: updatedDiscounts
                                       }
                                     }

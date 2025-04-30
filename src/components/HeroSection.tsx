@@ -40,6 +40,31 @@ const getDarkerColor = (hex: string): string => {
   }
 };
 
+// Función para obtener un color más claro (para fondos de iconos)
+const getLighterColor = (hex: string): string => {
+  // Validar formato hex
+  if (!hex || !hex.startsWith('#') || hex.length !== 7) {
+    return '#fee2e2'; // Fallback a un rojo claro
+  }
+
+  try {
+    // Convertir hex a RGB
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    
+    // Aclarar los valores (añadir un 80% de blanco)
+    const lighterR = Math.min(255, r + (255 - r) * 0.85);
+    const lighterG = Math.min(255, g + (255 - g) * 0.85);
+    const lighterB = Math.min(255, b + (255 - b) * 0.85);
+    
+    // Convertir de nuevo a hex
+    return `#${Math.floor(lighterR).toString(16).padStart(2, '0')}${Math.floor(lighterG).toString(16).padStart(2, '0')}${Math.floor(lighterB).toString(16).padStart(2, '0')}`;
+  } catch (error) {
+    return '#fee2e2'; // Fallback a un rojo claro en caso de error
+  }
+};
+
 export function HeroSection({ className }: HeroSectionProps) {
   // State for form data
   const [formData, setFormData] = useState<QuoteFormData>({
@@ -90,13 +115,17 @@ export function HeroSection({ className }: HeroSectionProps) {
     });
   }
 
-  // Obtener los colores para el gradiente
+  // Obtener los colores para el gradiente y elementos dinámicos
   const primaryColor = useMemo(() => {
     return settings?.branding?.primaryColor || '#ef4444';
   }, [settings?.branding?.primaryColor]);
   
   const darkerPrimaryColor = useMemo(() => {
     return getDarkerColor(primaryColor);
+  }, [primaryColor]);
+  
+  const lighterPrimaryColor = useMemo(() => {
+    return getLighterColor(primaryColor);
   }, [primaryColor]);
 
   return (
@@ -141,7 +170,7 @@ export function HeroSection({ className }: HeroSectionProps) {
                       <label className="block text-sm font-medium text-gray-700 mb-1">País de origen</label>
                       <div className="relative">
                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                          <MapPin className="h-5 w-5 text-red-600" />
+                          <MapPin className="h-5 w-5" style={{ color: primaryColor }} />
                         </div>
                         <Input 
                           value={formData.origin}
@@ -186,7 +215,8 @@ export function HeroSection({ className }: HeroSectionProps) {
                     <div className="flex items-end">
                       <Button
                         type="submit"
-                        className="w-full h-12 bg-red-600 hover:bg-red-700 text-white font-medium rounded-md border-0 flex items-center justify-center gap-2"
+                        style={{ backgroundColor: primaryColor, borderColor: primaryColor }}
+                        className="w-full h-12 hover:opacity-90 text-white font-medium rounded-md border-0 flex items-center justify-center gap-2"
                       >
                         Cotizar <ArrowRight className="h-4 w-4" />
                       </Button>
@@ -206,24 +236,33 @@ export function HeroSection({ className }: HeroSectionProps) {
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div className="bg-gray-50 rounded-xl p-6 shadow-sm border border-gray-100 flex flex-col items-center text-center">
-              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-4">
-                <Shield className="h-8 w-8 text-red-600" />
+              <div 
+                className="w-16 h-16 rounded-full flex items-center justify-center mb-4"
+                style={{ backgroundColor: lighterPrimaryColor }}
+              >
+                <Shield className="h-8 w-8" style={{ color: primaryColor }} />
               </div>
               <h3 className="text-xl font-semibold mb-3">Cobertura médica</h3>
               <p className="text-gray-600">Gastos médicos por enfermedad o accidente durante tu viaje, incluyendo atención hospitalaria y medicamentos.</p>
             </div>
             
             <div className="bg-gray-50 rounded-xl p-6 shadow-sm border border-gray-100 flex flex-col items-center text-center">
-              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-4">
-                <Globe className="h-8 w-8 text-red-600" />
+              <div 
+                className="w-16 h-16 rounded-full flex items-center justify-center mb-4"
+                style={{ backgroundColor: lighterPrimaryColor }}
+              >
+                <Globe className="h-8 w-8" style={{ color: primaryColor }} />
               </div>
               <h3 className="text-xl font-semibold mb-3">Asistencia global</h3>
               <p className="text-gray-600">Servicio de asistencia disponible las 24 horas, los 7 días de la semana en más de 100 países del mundo.</p>
             </div>
             
             <div className="bg-gray-50 rounded-xl p-6 shadow-sm border border-gray-100 flex flex-col items-center text-center">
-              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-4">
-                <Phone className="h-8 w-8 text-red-600" />
+              <div 
+                className="w-16 h-16 rounded-full flex items-center justify-center mb-4"
+                style={{ backgroundColor: lighterPrimaryColor }}
+              >
+                <Phone className="h-8 w-8" style={{ color: primaryColor }} />
               </div>
               <h3 className="text-xl font-semibold mb-3">Emergencias 24/7</h3>
               <p className="text-gray-600">Asistencia telefónica y por videollamada ante cualquier emergencia durante tu viaje, en tu idioma.</p>
@@ -235,15 +274,221 @@ export function HeroSection({ className }: HeroSectionProps) {
       {/* Banner promocional */}
       <div className="bg-gray-100 py-8">
         <div className="container mx-auto px-4">
-          <div className="bg-gradient-to-r from-red-600 to-red-700 rounded-xl py-6 px-8 flex flex-col md:flex-row items-center justify-between">
+          <div 
+            className="rounded-xl py-6 px-8 flex flex-col md:flex-row items-center justify-between"
+            style={{
+              background: `linear-gradient(to right, ${primaryColor}, ${darkerPrimaryColor})`
+            }}
+          >
             <div className="text-white text-center md:text-left mb-4 md:mb-0">
               <h3 className="text-xl font-bold">¿Por qué elegir nuestra asistencia?</h3>
-              <p className="text-white/90">Más de 1 millón de viajeros nos han elegido para proteger sus viajes</p>
+              <p className="text-white/90">Miles de viajeros nos han elegido para proteger sus viajes</p>
             </div>
             <Button 
               onClick={() => navigate('/planes')} 
-              className="bg-white text-red-600 hover:bg-gray-100 font-medium rounded-md border-0">
+              className="bg-white hover:bg-gray-100 font-medium rounded-md border-0"
+              style={{ color: primaryColor }}
+            >
               Ver todos los planes
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* Sección de descuentos */}
+      <div className="bg-white py-12">
+        <div className="container mx-auto px-4">
+          <h2 className="text-2xl md:text-3xl font-bold text-center text-gray-800 mb-8">Ofertas y Descuentos Especiales</h2>
+          
+          {settings?.content?.discountSection?.discounts && settings.content.discountSection.discounts.length > 0 ? (
+            <div className="grid grid-cols-12 gap-4">
+              {/* Primer descuento: ocupa 5 columnas de ancho */}
+              {settings.content.discountSection.discounts[0] && (
+                <div className="col-span-12 md:col-span-5 rounded-xl overflow-hidden shadow-md border border-gray-100 transition-all duration-300 hover:shadow-lg">
+                  <div className="relative h-64 md:h-full">
+                    <div 
+                      className="absolute inset-0 bg-cover bg-center"
+                      style={{ backgroundImage: settings.content.discountSection.discounts[0].imageSrc ? 
+                        `url(${settings.content.discountSection.discounts[0].imageSrc})` : 
+                        `linear-gradient(135deg, ${primaryColor}30, ${primaryColor}60)` 
+                      }}
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
+                    <div className="relative h-full flex flex-col justify-end p-6 z-10">
+                      <span className="inline-flex items-center rounded-full bg-primary/90 px-2.5 py-1 text-xs font-semibold text-white">
+                        {settings.content.discountSection.discounts[0].discountPercentage}% OFF
+                      </span>
+                      <h3 className="text-xl font-semibold text-white mt-2 mb-1">{settings.content.discountSection.discounts[0].title}</h3>
+                      <p className="text-white/80 text-sm mb-4">{settings.content.discountSection.discounts[0].description}</p>
+                      <Button 
+                        variant="outline" 
+                        className="bg-white/10 backdrop-blur-sm text-white border-white/20 hover:bg-white/20 hover:text-white w-full md:w-auto"
+                      >
+                        Ver oferta
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              {/* Columna con dos descuentos apilados verticalmente, cada uno de 7 columnas de ancho */}
+              <div className="col-span-12 md:col-span-7 grid grid-cols-1 md:grid-rows-2 gap-4">
+                {/* Segundo descuento */}
+                {settings.content.discountSection.discounts[1] && (
+                  <div className="rounded-xl overflow-hidden shadow-md border border-gray-100 transition-all duration-300 hover:shadow-lg">
+                    <div className="relative h-44">
+                      <div 
+                        className="absolute inset-0 bg-cover bg-center"
+                        style={{ backgroundImage: settings.content.discountSection.discounts[1].imageSrc ? 
+                          `url(${settings.content.discountSection.discounts[1].imageSrc})` : 
+                          `linear-gradient(135deg, ${primaryColor}30, ${primaryColor}60)` 
+                        }}
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
+                      <div className="relative h-full flex flex-col justify-end p-6 z-10">
+                        <span className="inline-flex items-center rounded-full bg-primary/90 px-2.5 py-1 text-xs font-semibold text-white">
+                          {settings.content.discountSection.discounts[1].discountPercentage}% OFF
+                        </span>
+                        <h3 className="text-xl font-semibold text-white mt-2 mb-1">{settings.content.discountSection.discounts[1].title}</h3>
+                        <p className="text-white/80 text-sm hidden md:block mb-2">{settings.content.discountSection.discounts[1].description}</p>
+                        <Button 
+                          variant="outline" 
+                          className="bg-white/10 backdrop-blur-sm text-white border-white/20 hover:bg-white/20 hover:text-white w-full md:w-auto"
+                        >
+                          Ver oferta
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
+                {/* Tercer descuento */}
+                {settings.content.discountSection.discounts[2] && (
+                  <div className="rounded-xl overflow-hidden shadow-md border border-gray-100 transition-all duration-300 hover:shadow-lg">
+                    <div className="relative h-44">
+                      <div 
+                        className="absolute inset-0 bg-cover bg-center"
+                        style={{ backgroundImage: settings.content.discountSection.discounts[2].imageSrc ? 
+                          `url(${settings.content.discountSection.discounts[2].imageSrc})` : 
+                          `linear-gradient(135deg, ${primaryColor}30, ${primaryColor}60)` 
+                        }}
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
+                      <div className="relative h-full flex flex-col justify-end p-6 z-10">
+                        <span className="inline-flex items-center rounded-full bg-primary/90 px-2.5 py-1 text-xs font-semibold text-white">
+                          {settings.content.discountSection.discounts[2].discountPercentage}% OFF
+                        </span>
+                        <h3 className="text-xl font-semibold text-white mt-2 mb-1">{settings.content.discountSection.discounts[2].title}</h3>
+                        <p className="text-white/80 text-sm hidden md:block mb-2">{settings.content.discountSection.discounts[2].description}</p>
+                        <Button 
+                          variant="outline" 
+                          className="bg-white/10 backdrop-blur-sm text-white border-white/20 hover:bg-white/20 hover:text-white w-full md:w-auto"
+                        >
+                          Ver oferta
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+              
+              {/* Fila inferior con tres descuentos, cada uno de 4 columnas de ancho */}
+              <div className="col-span-12 md:col-span-4 rounded-xl overflow-hidden shadow-md border border-gray-100 transition-all duration-300 hover:shadow-lg">
+                {settings.content.discountSection.discounts[3] && (
+                  <div className="relative h-44">
+                    <div 
+                      className="absolute inset-0 bg-cover bg-center"
+                      style={{ backgroundImage: settings.content.discountSection.discounts[3].imageSrc ? 
+                        `url(${settings.content.discountSection.discounts[3].imageSrc})` : 
+                        `linear-gradient(135deg, ${primaryColor}30, ${primaryColor}60)` 
+                      }}
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
+                    <div className="relative h-full flex flex-col justify-end p-6 z-10">
+                      <span className="inline-flex items-center rounded-full bg-primary/90 px-2.5 py-1 text-xs font-semibold text-white">
+                        {settings.content.discountSection.discounts[3].discountPercentage}% OFF
+                      </span>
+                      <h3 className="text-lg font-semibold text-white mt-2 mb-1">{settings.content.discountSection.discounts[3].title}</h3>
+                      <Button 
+                        variant="outline" 
+                        className="bg-white/10 backdrop-blur-sm text-white border-white/20 hover:bg-white/20 hover:text-white w-full mt-2"
+                      >
+                        Ver oferta
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+              
+              <div className="col-span-12 md:col-span-4 rounded-xl overflow-hidden shadow-md border border-gray-100 transition-all duration-300 hover:shadow-lg">
+                {settings.content.discountSection.discounts[4] && (
+                  <div className="relative h-44">
+                    <div 
+                      className="absolute inset-0 bg-cover bg-center"
+                      style={{ backgroundImage: settings.content.discountSection.discounts[4].imageSrc ? 
+                        `url(${settings.content.discountSection.discounts[4].imageSrc})` : 
+                        `linear-gradient(135deg, ${primaryColor}30, ${primaryColor}60)` 
+                      }}
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
+                    <div className="relative h-full flex flex-col justify-end p-6 z-10">
+                      <span className="inline-flex items-center rounded-full bg-primary/90 px-2.5 py-1 text-xs font-semibold text-white">
+                        {settings.content.discountSection.discounts[4].discountPercentage}% OFF
+                      </span>
+                      <h3 className="text-lg font-semibold text-white mt-2 mb-1">{settings.content.discountSection.discounts[4].title}</h3>
+                      <Button 
+                        variant="outline" 
+                        className="bg-white/10 backdrop-blur-sm text-white border-white/20 hover:bg-white/20 hover:text-white w-full mt-2"
+                      >
+                        Ver oferta
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+              
+              <div className="col-span-12 md:col-span-4 rounded-xl overflow-hidden shadow-md border border-gray-100 transition-all duration-300 hover:shadow-lg">
+                {settings.content.discountSection.discounts[5] && (
+                  <div className="relative h-44">
+                    <div 
+                      className="absolute inset-0 bg-cover bg-center"
+                      style={{ backgroundImage: settings.content.discountSection.discounts[5].imageSrc ? 
+                        `url(${settings.content.discountSection.discounts[5].imageSrc})` : 
+                        `linear-gradient(135deg, ${primaryColor}30, ${primaryColor}60)` 
+                      }}
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
+                    <div className="relative h-full flex flex-col justify-end p-6 z-10">
+                      <span className="inline-flex items-center rounded-full bg-primary/90 px-2.5 py-1 text-xs font-semibold text-white">
+                        {settings.content.discountSection.discounts[5].discountPercentage}% OFF
+                      </span>
+                      <h3 className="text-lg font-semibold text-white mt-2 mb-1">{settings.content.discountSection.discounts[5].title}</h3>
+                      <Button 
+                        variant="outline" 
+                        className="bg-white/10 backdrop-blur-sm text-white border-white/20 hover:bg-white/20 hover:text-white w-full mt-2"
+                      >
+                        Ver oferta
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="text-center p-8 border border-dashed rounded-lg bg-gray-50">
+              <p className="text-gray-600">No hay descuentos configurados. Agregue descuentos en el panel de administración.</p>
+            </div>
+          )}
+          
+          {/* Botón para ver todas las ofertas */}
+          <div className="text-center mt-8">
+            <Button 
+              variant="outline" 
+              className="border-gray-300 hover:bg-gray-100"
+              style={{ color: primaryColor, borderColor: `${primaryColor}40` }}
+              onClick={() => navigate('/planes')}
+            >
+              Ver todas las ofertas y descuentos
             </Button>
           </div>
         </div>

@@ -46,17 +46,23 @@ function AppContent() {
     loadInitialData();
   }, [fetchSettings, fetchPlans]);
 
-  const isAdminRoute = location.pathname.startsWith('/admin');
+  // Todas las rutas, tanto de admin como de cliente, usan sus propios layouts definidos en routes/index.tsx
 
-  // Si es una ruta de admin y el usuario es admin, usar AdminLayout
-  if (isAdminRoute && isAdmin) {
+  // Todas las rutas, tanto de admin como de cliente, usan sus propios layouts
+  // Verificar si estamos en la ruta de admin
+  const isAdminRoute = location.pathname.startsWith('/admin');
+  
+  if (isAdminRoute) {
+    // Para rutas de admin, no mostrar Navbar ni Footer 
     return (
-      <AdminLayout>
-        <AppRoutes />
-      </AdminLayout>
+      <div className="min-h-screen flex flex-col">
+        <main className="flex-1">
+          <AppRoutes />
+        </main>
+      </div>
     );
   }
-
+  
   // Para rutas de cliente
   return (
     <div className="min-h-screen flex flex-col">

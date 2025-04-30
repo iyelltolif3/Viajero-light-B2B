@@ -8,12 +8,17 @@ import { Loader2, ShieldAlert, Menu, X, Phone, Globe2, HelpCircle, FileText } fr
 import { Badge } from '@/components/ui/badge';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 
 export function Navbar() {
   const { user, isAdmin, isLoggingOut, isAuthenticating } = useAuth();
   const { settings } = useSettingsStore();
   const [mounted, setMounted] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const location = useLocation();
+
+  // Check if we are on an admin page
+  const isAdminPage = location.pathname.startsWith('/admin');
 
   const primaryColor = settings?.branding?.primaryColor || "#E11D48";
   const secondaryColor = settings?.branding?.secondaryColor || "#1E293B";
@@ -30,6 +35,11 @@ export function Navbar() {
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Don't show Navbar on admin pages
+  if (isAdminPage) {
+    return null;
+  }
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">

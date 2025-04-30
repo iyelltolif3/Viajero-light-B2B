@@ -10,45 +10,33 @@ const Login = () => {
     <div className="min-h-screen flex flex-col relative">
       {/* Background Image */}
       <div 
-        className="absolute inset-0 bg-cover bg-center z-0" 
+        className="absolute inset-0 z-0" 
         style={{
-          backgroundImage: 'url("/travel-background.jpg")', // Necesitarás agregar esta imagen
-          filter: 'brightness(0.7)'
+          background: 'linear-gradient(135deg, #f3f4f6 0%, #d1d5db 60%, #6b7280 100%)'
         }}
       />
 
-      {/* Header */}
-      <header className="relative z-10 p-4 md:p-6">
-        <div className="max-w-7xl mx-auto flex justify-between items-center">
-          <Link to="/">
-            <Button variant="ghost" size="sm" className="gap-2 text-white hover:text-primary/90">
-              <ArrowLeft className="h-4 w-4" />
-              Volver al inicio
-            </Button>
-          </Link>
-          
-          <div className="flex items-center space-x-2">
-            <div className="text-2xl font-semibold text-white">
-              Viajero Light
-            </div>
-            <ThemeToggle />
-          </div>
-        </div>
-      </header>
+
       
       {/* Content */}
-      <main className="relative z-10 flex-1 flex flex-col items-center justify-center p-4 md:p-8">
-        <div className="w-full max-w-md mb-8 text-center">
-          
+      {/* Botón Volver al inicio en la esquina superior izquierda */}
+      <div className="absolute top-6 left-6 z-20">
+        <Link to="/">
+          <Button variant="ghost" size="sm" className="gap-2 text-gray-700 hover:text-primary/90">
+            <ArrowLeft className="h-4 w-4" />
+            Volver al inicio
+          </Button>
+        </Link>
+      </div>
+      <main className="relative z-10 flex-1 flex flex-col justify-center items-center py-6">
+        <div className="w-full max-w-md">
+          <div className="flex justify-center">
+            <LoginForm className="animate-fade-in" />
+          </div>
         </div>
-        
-        <LoginForm className="animate-fade-in" />
       </main>
       
-      {/* Footer */}
-      <footer className="relative z-10 py-6 px-4 md:px-6 text-center text-white/80 text-sm">
-        <p>© {new Date().getFullYear()} Mawdy. All rights reserved.</p>
-      </footer>
+
     </div>
   );
 };

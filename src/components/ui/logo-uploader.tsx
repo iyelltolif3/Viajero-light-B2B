@@ -7,7 +7,8 @@ import { Upload, X } from 'lucide-react';
 
 interface LogoUploaderProps {
   currentLogo?: string;
-  onLogoChange: (logo: string) => void;
+  // Actualizada para aceptar un archivo o una URL string
+  onLogoChange: (logo: File | string) => void;
 }
 
 export function LogoUploader({ currentLogo, onLogoChange }: LogoUploaderProps) {
@@ -38,30 +39,23 @@ export function LogoUploader({ currentLogo, onLogoChange }: LogoUploaderProps) {
       return;
     }
 
-    // Validar dimensiones
+    // Para la previsualización, convertimos a base64 localmente
     const img = new Image();
     const objectUrl = URL.createObjectURL(file);
     
     img.onload = () => {
       URL.revokeObjectURL(objectUrl);
       
-      if (img.width > 1000 || img.height > 1000) {
-        toast({
-          title: "Dimensiones no válidas",
-          description: "La imagen no debe exceder 1000x1000 píxeles.",
-          variant: "destructive"
-        });
-        return;
-      }
-
-      // Convertir a base64
+      // Generar previsualización en base64 solo para mostrar
       const reader = new FileReader();
       reader.onloadend = () => {
         const base64String = reader.result as string;
-        setPreview(base64String);
-        onLogoChange(base64String);
+        setPreview(base64String); // Solo para previsualización local
       };
       reader.readAsDataURL(file);
+      
+      // Pasar el archivo original al componente padre
+      onLogoChange(file);
     };
 
     img.src = objectUrl;
@@ -117,7 +111,7 @@ export function LogoUploader({ currentLogo, onLogoChange }: LogoUploaderProps) {
         </div>
       </div>
       <p className="text-sm text-muted-foreground">
-        Formatos aceptados: PNG, JPG, SVG. Tamaño máximo: 2MB. Dimensiones máximas: 1000x1000px.
+        Formatos aceptados: PNG, JPG, SVG. Tamaño máximo: 2MB.
       </p>
     </div>
   );
