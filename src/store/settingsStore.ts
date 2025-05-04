@@ -116,11 +116,36 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
         return;
       }
 
+      // Transformar las zonas de la base de datos al formato de la aplicación
+      const transformedZones = (zonesData || []).map(dbZone => {
+        // Asegurar que todos los campos importantes existen y tienen valores válidos
+        return {
+          id: dbZone.id,
+          settings_id: dbZone.settings_id,
+          name: dbZone.name || 'Sin nombre',
+          description: dbZone.description || '',
+          // Mapear los campos snake_case a camelCase y asegurar valores por defecto
+          priceMultiplier: typeof dbZone.price_multiplier === 'number' ? dbZone.price_multiplier : 1,
+          riskLevel: dbZone.risk_level || 'low',
+          countries: Array.isArray(dbZone.countries) ? dbZone.countries : [],
+          // La columna se llama isActive en la base de datos (camelCase)
+          isActive: typeof dbZone.isActive === 'boolean' ? dbZone.isActive : true,
+          // Para compatibilidad con el modelo TypeScript
+          createdAt: dbZone.created_at,
+          updatedAt: dbZone.updated_at,
+          // Conservar los campos originales también para evitar pérdida de datos
+          created_at: dbZone.created_at,
+          updated_at: dbZone.updated_at
+        };
+      });
+
+      console.log('Zonas transformadas desde la BD:', JSON.stringify(transformedZones, null, 2));
+      
       // Combinar todos los datos
       const settings: AdminSettings = {
         ...settingsData,
         content: settingsData.content || defaultContent,
-        zones: zonesData || [],
+        zones: transformedZones,
         ageRanges: ageRangesData || [],
         emergencyContacts: emergencyContactsData || [],
       };
@@ -178,15 +203,12 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
 
       set({ isLoading: true, error: null });
       
-      // ENFOQUE SUPER SIMPLIFICADO: 
-      // Nos enfocamos SOLO en guardar el branding con la estructura exacta
-      // que vemos en las capturas de pantalla de Supabase
+      console.log('Guardando configuración completa:', localSettings);
       
       // 1. Extraer los valores de branding con fallbacks por seguridad
       const brandingValues = localSettings.branding || {};
       
-      // 2. Crear un objeto mínimo con SOLO las columnas que vemos en la captura de pantalla
-      // y con los nombres EXACTOS que vemos en Supabase
+      // 2. Crear un objeto para la tabla system_settings
       const settingsToSave = {
         // ID es obligatorio para la actualización
         "id": localSettings.id,
@@ -198,15 +220,14 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
         "secondaryColor": (brandingValues as any)?.secondaryColor || '#64748b',  // Texto
         "tertiaryColor": '#e2e8f0',  // Texto
         
-        // Campos JSONB que vemos en la captura - asegurando la estructura correcta
+        // Campos JSONB que vemos en la captura
         "notificationSettings": { emailEnabled: false, smsEnabled: false, pushEnabled: false },
         "paymentSettings": { currency: 'USD', taxRate: 0 },
-        // Muy importante: notifications debe tener la estructura correcta con beforeExpiration
         "notifications": {
-          beforeExpiration: [30, 15, 7] // Valores por defecto (30, 15 y 7 días)
+          beforeExpiration: [30, 15, 7]
         },
         
-        // El campo branding como JSONB tal como se ve en la captura
+        // El campo branding como JSONB
         "branding": {
           logo: (brandingValues as any)?.logo || '',
           companyName: (brandingValues as any)?.companyName || '',
@@ -216,78 +237,142 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
           secondaryColor: (brandingValues as any)?.secondaryColor || '#64748b'
         },
         
-        // AÑADIDO: Incluir el campo content como JSONB para guardar los descuentos
-        "content": localSettings.content || defaultContent,
-        
-        // Timestamp con formato snake_case
         "updated_at": new Date().toISOString()
       };
-      
-      // Log completo para depuración
-      console.log('Objeto final a guardar:', JSON.stringify(settingsToSave, null, 2));
-      
-      // Log para depuración - objeto simplificado
-      console.log('Guardando con estructura simplificada:', settingsToSave);
 
+      // PASO 1: Guardar la configuración general
+      let mainConfigSaved = false;
+      
       // Si no hay configuración previa, crear una nueva
-      if (!get().settings) {
-        const { data: settingsData, error: settingsError } = await supabase
+      if (!localSettings.id) {
+        const { data, error } = await supabase
           .from('system_settings')
-          .insert(settingsToSave)
-          .select()
-          .single();
+          .insert([settingsToSave])
+          .select();
 
-        if (settingsError) throw settingsError;
+        if (error) throw error;
+        console.log('Configuración principal creada:', data);
+        mainConfigSaved = true;
+        
+        // Actualizar el estado local con el nuevo ID
+        if (data && data[0]) {
+          localSettings.id = data[0].id;
+        }
+      } else {
+        // Actualizar la configuración existente
+        const { data, error } = await supabase
+          .from('system_settings')
+          .update(settingsToSave)
+          .eq('id', localSettings.id)
+          .select();
 
-        // Actualizar el estado con la nueva configuración
-        set({
-          settings: {
-            ...settingsData,
-            zones: [],
-            ageRanges: [],
-            emergencyContacts: [],
-          },
-          hasUnsavedChanges: false,
-          isLoading: false,
-        });
-
-        toast({
-          title: "Éxito",
-          description: "Configuración inicial creada correctamente",
-        });
-
-        return;
+        if (error) throw error;
+        console.log('Configuración principal actualizada:', data);
+        mainConfigSaved = true;
       }
-
-      // Si ya existe configuración, actualizarla
-      const { error: settingsError } = await supabase
-        .from('system_settings')
-        .update(settingsToSave)
-        .eq('id', localSettings.id);
-
-      if (settingsError) throw settingsError;
-
-      // IMPORTANTE: Comentamos la actualización de tablas secundarias (zones, age_ranges, emergency_contacts)  
-      // porque según las capturas de pantalla, estas tablas o tienen una estructura diferente o no existen
-      // Nos enfocamos ÚNICAMENTE en guardar la configuración principal en system_settings
       
-      // Log para depuración
-      console.log('Omitiendo actualizaciones de tablas secundarias para evitar errores');
+      // PASO 2: Guardar las zonas en su tabla correspondiente
+      let zonesSaved = false;
       
-      /* 
-      // NOTA: Este código está comentado porque las tablas relacionadas parecen tener
-      // una estructura diferente o no existen según las capturas de pantalla
-      // Se descomentará y adaptará cuando se conozca la estructura exacta de las tablas
-      
-      // Código para actualizar zonas, rangos de edad y contactos de emergencia...
-      */
+      if (localSettings.zones && localSettings.zones.length > 0) {
+        // Asegurarnos de hacer log completo de los datos que enviaremos, para depuración
+        console.log('Zonas en localSettings antes de guardar:', JSON.stringify(localSettings.zones, null, 2));
+        
+        // IMPORTANTE: NO eliminar las zonas existentes hasta confirmar que podemos guardar las nuevas
+        // Preparar las zonas nuevas para su inserción
+        if (localSettings.id) {
+          // Crear array para guardar las zonas para Supabase
+          const safeSaveZones = [];
+          
+          // Verificar cada zona y asegurarnos que tenga el formato correcto
+          for (const zone of localSettings.zones) {
+            // Convertir explícitamente todos los campos necesarios
+            const preparedZone = {
+              id: zone.id,
+              settings_id: localSettings.id,
+              name: zone.name || 'Sin nombre',
+              description: zone.description || '',
+              // Usar los campos que sabemos que existen en la base de datos
+              price_multiplier: typeof zone.priceMultiplier === 'number' ? zone.priceMultiplier : 1,
+              countries: Array.isArray(zone.countries) ? zone.countries : [],
+              risk_level: zone.riskLevel || 'low',
+              // Camel case tal como está en la base de datos
+              isActive: typeof zone.isActive === 'boolean' ? zone.isActive : true,
+              // Usar createdAt si existe, de lo contrario usar la fecha actual
+              created_at: zone.created_at || zone.createdAt || new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            };
+            
+            // Validar campos clave para asegurar que son válidos
+            if (!preparedZone.id || !preparedZone.settings_id || !preparedZone.name) {
+              console.error('Zona no válida, faltan campos obligatorios:', preparedZone);
+              continue; // Saltar esta zona
+            }
 
-      // Actualizar el estado con los cambios guardados
+            // Agregar a la lista de zonas a guardar
+            safeSaveZones.push(preparedZone);
+          }
+          
+          // Imprimir lo que vamos a guardar para depuración
+          console.log('Zonas preparadas para guardar:', JSON.stringify(safeSaveZones, null, 2));
+          
+          // Intentar insertar las nuevas zonas primero SIN borrar las existentes
+          try {
+            // Insertar las nuevas zonas
+            const { data: insertedData, error: insertError } = await supabase
+              .from('zones')
+              .upsert(safeSaveZones, { onConflict: 'id' }) // Usar upsert en lugar de insert
+              .select();
+              
+            if (insertError) {
+              console.error('Error al insertar zonas:', insertError);
+              throw insertError;
+            }
+            
+            console.log('Zonas insertadas exitosamente:', insertedData);
+            zonesSaved = true;
+            
+            // Si todo va bien, ahora podemos eliminar las zonas que ya no existen
+            // (aquellas que no están en localSettings pero sí en la base de datos)
+            
+            // Obtener IDs de zonas actualmente en localSettings
+            const currentZoneIds = localSettings.zones.map(z => z.id);
+            
+            // Eliminar solo las zonas que ya no existen en localSettings
+            if (currentZoneIds.length > 0) {
+              const { error: cleanupError } = await supabase
+                .from('zones')
+                .delete()
+                .eq('settings_id', localSettings.id)
+                .not('id', 'in', `(${currentZoneIds.map(id => `'${id}'`).join(',')})`);
+                
+              if (cleanupError) {
+                console.error('Error al limpiar zonas antiguas:', cleanupError);
+                // No lanzamos error aquí, ya que las zonas nuevas se guardaron correctamente
+              }
+            }
+          } catch (err) {
+            console.error('Error al guardar zonas:', err);
+            throw err;
+          }
+        }
+      }
+      
+      // PASO 3: Refrescar los datos para asegurar que están actualizados
+      // En lugar de obtener nuevos datos que pueden causar discrepancias,
+      // actualizamos directamente el estado global con los datos que ya guardamos
       set({
-        settings: localSettings,
+        settings: { ...localSettings },  // Usamos spread para crear una nueva referencia
+        localSettings: { ...localSettings },  // Sincronizamos localSettings también
         hasUnsavedChanges: false,
         isLoading: false,
       });
+      
+      // Después de actualizar el estado, ahora sí recargamos los datos
+      // para futuras operaciones, pero no actualizamos la UI con estos datos
+      setTimeout(() => {
+        get().fetchSettings();
+      }, 500);
 
       toast({
         title: "Éxito",

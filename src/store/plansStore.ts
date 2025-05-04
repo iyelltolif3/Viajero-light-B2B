@@ -2,7 +2,6 @@ import { create } from 'zustand';
 import type { Plan } from '@/types';
 import { supabase } from '@/lib/supabase';
 import { toast } from '@/components/ui/use-toast';
-import { transformObjectToSnakeCase, transformObjectToCamelCase } from '@/lib/utils';
 
 interface PlansStore {
   plans: Plan[];
@@ -35,11 +34,10 @@ export const usePlansStore = create<PlansStore>((set, get) => ({
 
       if (plansError) throw plansError;
 
-      const transformedPlans = plansData?.map(plan => transformObjectToCamelCase(plan)) || [];
-
+      // Usamos los datos tal cual vienen de la base de datos
       set({
-        plans: transformedPlans,
-        local_plans: transformedPlans,
+        plans: plansData || [],
+        local_plans: plansData || [],
         is_loading: false,
         error: null,
         has_unsaved_changes: false,
@@ -68,8 +66,29 @@ export const usePlansStore = create<PlansStore>((set, get) => ({
     try {
       set({ is_loading: true, error: null });
 
-      // Convertir de camelCase a snake_case para la base de datos
-      const updatesToSend = transformObjectToSnakeCase(updates);
+      // Creamos un objeto con solo las propiedades que existen en la tabla
+      const updatesToSend = {} as any;
+      
+      // Solo incluimos propiedades que existen en la tabla
+      if ('name' in updates) updatesToSend.name = updates.name;
+      if ('description' in updates) updatesToSend.description = updates.description;
+      if ('price' in updates) updatesToSend.price = updates.price;
+      if ('basePrice' in updates) updatesToSend.basePrice = updates.basePrice;
+      if ('priceMultiplier' in updates) updatesToSend.priceMultiplier = updates.priceMultiplier;
+      if ('priceDetail' in updates) updatesToSend.priceDetail = updates.priceDetail;
+      if ('features' in updates) updatesToSend.features = updates.features;
+      if ('badge' in updates) updatesToSend.badge = updates.badge;
+      if ('maxDays' in updates) updatesToSend.maxDays = updates.maxDays;
+      if ('coverageDetails' in updates) updatesToSend.coverageDetails = updates.coverageDetails;
+      
+      // Si hay una fecha de actualización, la convertimos al formato correcto
+      if ('updatedAt' in updates) {
+        updatesToSend.updated_at = updates.updatedAt;
+      } else {
+        // Siempre incluimos la fecha de actualización
+        updatesToSend.updated_at = new Date().toISOString();
+      }
+      
       console.log('Updating plan with data:', updatesToSend);
       
       const { error: updateError } = await supabase
@@ -135,8 +154,25 @@ export const usePlansStore = create<PlansStore>((set, get) => ({
     try {
       set({ is_loading: true, error: null });
 
-      // Convertir de camelCase a snake_case para la base de datos
-      const planToInsert = transformObjectToSnakeCase(plan);
+      // Adaptamos el formato para coincidir con la base de datos
+      // Las propiedades createdAt, updatedAt deben ser created_at, updated_at
+      // Filtramos solo las propiedades que existen en la tabla de la base de datos
+      const planToInsert = {
+        id: plan.id,
+        name: plan.name,
+        description: plan.description,
+        price: plan.price,
+        basePrice: plan.basePrice,
+        priceMultiplier: plan.priceMultiplier,
+        priceDetail: plan.priceDetail,
+        features: plan.features,
+        badge: plan.badge,
+        maxDays: plan.maxDays,
+        coverageDetails: plan.coverageDetails,
+        created_at: plan.createdAt || (plan as any).created_at || new Date().toISOString(),
+        updated_at: plan.updatedAt || (plan as any).updated_at || new Date().toISOString(),
+      } as any; // Usamos type assertion para evitar errores de TypeScript
+      
       console.log('Inserting plan with data:', planToInsert);
       
       const { error: addError } = await supabase

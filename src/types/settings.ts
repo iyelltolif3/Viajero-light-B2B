@@ -73,8 +73,9 @@ export interface PaymentSettings {
 }
 
 export interface Zone extends BaseModel {
-  settingsId: string;
+  settings_id?: string; // Usamos el nombre exacto de la columna en la base de datos
   name: string;
+  description?: string; // Agregado según el esquema real de la base de datos
   priceMultiplier: number;
   countries: string[];
   riskLevel: 'low' | 'medium' | 'high';

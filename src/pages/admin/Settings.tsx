@@ -17,18 +17,17 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
 import { PlanForm } from '@/components/admin/PlanForm';
+import { ZoneForm } from '@/components/admin/ZoneForm';
 import { BrandingForm } from '@/components/admin/BrandingForm';
 
 export default function AdminSettings() {
   const { plans, updatePlan, addPlan, deletePlan } = usePlansStore();
-  const { settings, updateSettings, error: settingsError } = useSettingsStore();
+  const { settings, updateSettings, saveSettings, error: settingsError } = useSettingsStore();
   const [selectedPlanId, setSelectedPlanId] = useState<string>('');
+  const [selectedZoneId, setSelectedZoneId] = useState<string>('');
 
-  useEffect(() => {
-    if (plans && plans.length > 0) {
-      setSelectedPlanId(plans[0]?.id || '');
-    }
-  }, [plans]);
+  // Ya no seleccionamos automáticamente ningún plan al cargar
+  // para mejorar la experiencia de usuario
 
   // Estado local para controlar cambios no guardados
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
@@ -46,8 +45,8 @@ export default function AdminSettings() {
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [hasUnsavedChanges]);
 
-  // Copia local de la configuración
-  const [localSettings, setLocalSettings] = useState<Partial<AdminSettingsType>>(settings || {
+  // Copia local de la configuración - inicializamos con un valor por defecto
+  const [localSettings, setLocalSettings] = useState<Partial<AdminSettingsType>>({
     id: '',
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
@@ -99,6 +98,25 @@ export default function AdminSettings() {
       secondaryColor: '#10b981'
     }
   });
+  
+  // Cargar los datos de configuración al montar el componente
+  useEffect(() => {
+    const loadSettings = async () => {
+      console.log('Iniciando carga de configuración...');
+      await useSettingsStore.getState().fetchSettings();
+      console.log('Configuración cargada');
+    };
+    
+    loadSettings();
+  }, []);
+  
+  // Sincronizar localSettings con settings cuando se carguen los datos
+  useEffect(() => {
+    if (settings) {
+      console.log('Configuración cargada desde la base de datos:', settings);
+      setLocalSettings(settings);
+    }
+  }, [settings]);
 
   // Copia local de los planes
   const [localPlans, setLocalPlans] = useState<Plan[]>(plans || []);
@@ -231,9 +249,18 @@ export default function AdminSettings() {
 
   const selectedPlan = plans?.find(p => p.id === selectedPlanId);
 
+  // Función para generar un UUID v4 válido
+  const generateUUID = () => {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+      const r = Math.random() * 16 | 0;
+      const v = c === 'x' ? r : (r & 0x3 | 0x8);
+      return v.toString(16);
+    });
+  };
+
   const handleAddPlan = () => {
     const newPlan = {
-      id: Date.now().toString(),
+      id: generateUUID(),
       name: 'Nuevo Plan',
       description: 'Descripción del nuevo plan',
       price: 0,
@@ -251,11 +278,12 @@ export default function AdminSettings() {
         preExistingConditions: false,
         adventureSports: false,
       },
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      isActive: true,
+      // No incluimos isActive porque no existe en la tabla
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
     };
-    addPlan(newPlan);
+    // Usar type assertion para evitar errores de TypeScript
+    addPlan(newPlan as any);
     setSelectedPlanId(newPlan.id);
     toast({
       title: "Plan creado",
@@ -273,10 +301,10 @@ export default function AdminSettings() {
     }
   };
 
-  const handleUpdateZone = (zone: Zone, field: keyof Zone, value: any) => {
+  const handleUpdateZone = (zoneId: string, updates: Partial<Zone>) => {
     if (!localSettings.zones) return;
     const updatedZones = localSettings.zones.map((z) =>
-      z.id === zone.id ? { ...z, [field]: value } : z
+      z.id === zoneId ? { ...z, ...updates } : z
     );
     // Usar update directo en lugar de handleInputChange para evitar problemas de tipo
     setLocalSettings({...localSettings, zones: updatedZones});
@@ -285,23 +313,67 @@ export default function AdminSettings() {
 
   const handleAddZone = () => {
     const newZone: Zone = {
-      id: Date.now().toString(),
-      name: '',
-      description: '', // Esta propiedad puede no existir en tu tipo Zone, ajústala según necesites
+      id: crypto.randomUUID(),
+      settings_id: localSettings.id || '', // Corregido: usar settings_id en lugar de settingsId
+      name: 'Nueva Zona',
+      description: '', // Agregado campo description que existe en la base de datos
       priceMultiplier: 1,
       riskLevel: 'low',
       countries: [],
       isActive: true,
-      order: localSettings.zones?.length || 0,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+      created_at: new Date().toISOString(), // Usar snake_case para ser consistente con la base de datos
+      updated_at: new Date().toISOString(), // Usar snake_case para ser consistente con la base de datos
     };
     // Usar update directo para evitar problemas de tipo
     setLocalSettings({
       ...localSettings, 
       zones: [...(localSettings.zones || []), newZone]
     });
+    setSelectedZoneId(newZone.id);
     setHasUnsavedChanges(true);
+    toast({
+      title: "Zona creada",
+      description: "Se ha creado una nueva zona. Personalízala según tus necesidades.",
+    });
+  };
+  
+  const handleSaveZone = async (zone: Zone) => {
+    // Actualizar la zona en localSettings
+    handleUpdateZone(zone.id, zone);
+    // Guardar todos los cambios en el servidor pero prevenir navegación
+    try {
+      await saveSettings();
+      // Importante: No hacer nada que pueda causar recarga o navegación
+      toast({
+        title: "Zona guardada",
+        description: "Los cambios han sido aplicados exitosamente.",
+      });
+      // Asegurarnos de que tenemos los cambios más recientes sin recargar
+      setHasUnsavedChanges(false);
+    } catch (error) {
+      console.error('Error al guardar zona:', error);
+      toast({
+        title: "Error",
+        description: "Hubo un problema al guardar los cambios.",
+        variant: "destructive"
+      });
+    }
+  };
+  
+  const handleDeleteZone = (zoneId: string) => {
+    if (!localSettings.zones) return;
+    const updatedZones = localSettings.zones.filter(z => z.id !== zoneId);
+    setLocalSettings({...localSettings, zones: updatedZones});
+    setSelectedZoneId('');
+    
+    // Guardar los cambios inmediatamente para evitar pérdida de datos
+    saveSettings();
+    setHasUnsavedChanges(false);
+    
+    toast({
+      title: "Zona eliminada",
+      description: "La zona ha sido eliminada y los cambios guardados.",
+    });
   };
 
   const handleUpdateAgeRange = (range: AgeRange, field: keyof AgeRange, value: any) => {
@@ -416,6 +488,13 @@ export default function AdminSettings() {
                   isSelected={selectedPlanId === plan.id}
                   onSelect={() => setSelectedPlanId(plan.id === selectedPlanId ? null : plan.id)}
                   onChange={(updates) => updateLocalPlan(plan.id, updates)}
+                  onSave={(updatedPlan) => {
+                    updatePlan(updatedPlan.id, updatedPlan);
+                    toast({
+                      title: "Plan guardado",
+                      description: "Los cambios han sido aplicados exitosamente.",
+                    });
+                  }}
                 />
               ))}
             </CardContent>
@@ -425,151 +504,68 @@ export default function AdminSettings() {
         <TabsContent value="zones">
           <Card>
             <CardHeader>
-              <div className="flex justify-between items-center">
-                <CardTitle>Configuración de Zonas</CardTitle>
-                <Button
-                  onClick={() => {
-                    const newZone: Zone = {
-                      id: Date.now().toString(),
-                      settingsId: settings.id,
-                      name: 'Nueva Zona',
-                      priceMultiplier: 1,
-                      countries: [],
-                      riskLevel: 'low',
-                      isActive: true,
-                      createdAt: new Date().toISOString(),
-                      updatedAt: new Date().toISOString()
-                    };
-                    updateSettings({
-                      zones: [...settings.zones, newZone]
-                    });
-                  }}
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Nueva Zona
-                </Button>
+              <div className="flex justify-between">
+                <CardTitle>Zonas</CardTitle>
+                <div className="flex space-x-2">
+                  {hasUnsavedChanges && (
+                    <Button
+                      onClick={() => {
+                        saveSettings();
+                        setHasUnsavedChanges(false);
+                        toast({
+                          title: "Configuración guardada",
+                          description: "Todos los cambios han sido aplicados exitosamente.",
+                        });
+                      }}
+                    >
+                      Guardar Cambios
+                    </Button>
+                  )}
+                  <Button
+                    onClick={handleAddZone}
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Nueva Zona
+                  </Button>
+                </div>
               </div>
               <CardDescription>
                 Configura las zonas y sus multiplicadores de precio
               </CardDescription>
+              {hasUnsavedChanges && (
+                <Alert variant="destructive" className="mt-4">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertTitle>Cambios sin guardar</AlertTitle>
+                  <AlertDescription>
+                    Has realizado cambios en las zonas que aún no se han guardado.
+                  </AlertDescription>
+                </Alert>
+              )}
             </CardHeader>
             <CardContent>
-              <div className="space-y-6">
-                {settings.zones.map((zone, index) => (
-                  <div key={zone.id} className="space-y-4 p-4 border rounded-lg">
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1 space-y-4">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div>
-                            <Label>Nombre de la Zona</Label>
-                            <Input
-                              value={zone.name}
-                              onChange={(e) => {
-                                const newZones = [...settings.zones];
-                                newZones[index] = { ...zone, name: e.target.value };
-                                updateSettings({ zones: newZones });
-                              }}
-                            />
-                          </div>
-                          <div>
-                            <Label>Multiplicador de Precio</Label>
-                            <Input
-                              type="number"
-                              min="0"
-                              step="0.1"
-                              value={zone.priceMultiplier}
-                              onChange={(e) => {
-                                const newZones = [...settings.zones];
-                                newZones[index] = { ...zone, priceMultiplier: parseFloat(e.target.value) };
-                                updateSettings({ zones: newZones });
-                              }}
-                            />
-                          </div>
-                        </div>
-                        <div>
-                          <Label>Nivel de Riesgo</Label>
-                          <Select
-                            value={zone.riskLevel}
-                            onValueChange={(value: 'low' | 'medium' | 'high') => {
-                              const newZones = [...settings.zones];
-                              newZones[index] = { ...zone, riskLevel: value };
-                              updateSettings({ zones: newZones });
-                            }}
-                          >
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="low">Bajo</SelectItem>
-                              <SelectItem value="medium">Medio</SelectItem>
-                              <SelectItem value="high">Alto</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div>
-                          <Label>Países</Label>
-                          <div className="space-y-2">
-                            {zone.countries.map((country, countryIndex) => (
-                              <div key={countryIndex} className="flex gap-2">
-                                <Input
-                                  value={country}
-                                  onChange={(e) => {
-                                    const newZones = [...settings.zones];
-                                    const newCountries = [...zone.countries];
-                                    newCountries[countryIndex] = e.target.value;
-                                    newZones[index] = { ...zone, countries: newCountries };
-                                    updateSettings({ zones: newZones });
-                                  }}
-                                />
-                                <Button
-                                  variant="destructive"
-                                  size="icon"
-                                  onClick={() => {
-                                    const newZones = [...settings.zones];
-                                    const newCountries = zone.countries.filter((_, i) => i !== countryIndex);
-                                    newZones[index] = { ...zone, countries: newCountries };
-                                    updateSettings({ zones: newZones });
-                                  }}
-                                >
-                                  <X className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            ))}
-                            <Button
-                              variant="outline"
-                              onClick={() => {
-                                const newZones = [...settings.zones];
-                                newZones[index] = {
-                                  ...zone,
-                                  countries: [...zone.countries, '']
-                                };
-                                updateSettings({ zones: newZones });
-                              }}
-                            >
-                              <Plus className="h-4 w-4 mr-2" />
-                              Agregar País
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                      <Button
-                        variant="destructive"
-                        size="icon"
-                        onClick={() => {
-                          const newZones = settings.zones.filter((_, i) => i !== index);
-                          updateSettings({ zones: newZones });
-                        }}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
+              <div className="space-y-4">
+                {localSettings?.zones && localSettings.zones.map((zone) => (
+                  <ZoneForm
+                    key={zone.id}
+                    zone={zone}
+                    isSelected={selectedZoneId === zone.id}
+                    onSelect={() => setSelectedZoneId(zone.id === selectedZoneId ? null : zone.id)}
+                    onChange={(updates) => handleUpdateZone(zone.id, updates)}
+                    onSave={handleSaveZone}
+                    onDelete={handleDeleteZone}
+                  />
                 ))}
               </div>
+              {(!localSettings?.zones || localSettings.zones.length === 0) && (
+                <div className="p-8 text-center">
+                  <p className="text-muted-foreground">No hay zonas configuradas</p>
+                  <Button onClick={handleAddZone} className="mt-4">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Agregar Zona
+                  </Button>
+                </div>
+              )}
             </CardContent>
-            <CardFooter>
-              <Button onClick={handleAddZone}>Agregar Zona</Button>
-            </CardFooter>
           </Card>
         </TabsContent>
 
