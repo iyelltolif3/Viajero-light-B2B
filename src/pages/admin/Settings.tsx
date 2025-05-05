@@ -5,13 +5,15 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import type { AdminSettings as AdminSettingsType, Plan, EmergencyContact, Zone, AgeRange } from '@/types';
+import type { DiscountItem } from '@/types/content';
 import { toast } from '@/components/ui/use-toast';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ColorPicker } from '@/components/ui/color-picker';
 import { usePlansStore } from '@/store/plansStore';
 import { useSettingsStore } from '@/store/settingsStore';
-import { X, Plus, Trash2, AlertCircle } from 'lucide-react';
+import { useContentStore } from '@/store/contentStore';
+import { X, Plus, Trash2, AlertCircle, Save, GripVertical, Calendar } from 'lucide-react';
 import { LogoUploader } from '@/components/ui/logo-uploader';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
@@ -19,6 +21,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { PlanForm } from '@/components/admin/PlanForm';
 import { ZoneForm } from '@/components/admin/ZoneForm';
 import { BrandingForm } from '@/components/admin/BrandingForm';
+import { DiscountImageUploader } from '@/components/admin/DiscountImageUploader';
+import DiscountSettingsManager from '@/components/admin/DiscountSettingsManager';
+import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
+import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 
 export default function AdminSettings() {
   const { plans, updatePlan, addPlan, deletePlan } = usePlansStore();
@@ -1049,7 +1058,11 @@ export default function AdminSettings() {
           <BrandingForm settings={settings} updateSettings={updateSettings} />
         </TabsContent>
 
-        <TabsContent value="discounts">
+        <TabsContent value="discounts" className="space-y-4">
+          <DiscountSettingsManager />
+        </TabsContent>
+
+        <TabsContent value="discounts-old" hidden>
           <Card>
             <CardHeader>
               <CardTitle>Gestión de Descuentos</CardTitle>

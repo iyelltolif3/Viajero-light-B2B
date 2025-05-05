@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Search, MapPin, Calendar, Users, ArrowRight, Globe, Shield, Phone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -10,6 +10,7 @@ import { QuoteFormData } from '@/types';
 import { useNavigate } from 'react-router-dom';
 import { toast } from '@/components/ui/use-toast';
 import { useSettingsStore } from '@/store/settingsStore';
+import { useContentStore } from '@/store/contentStore';
 
 interface HeroSectionProps {
   className?: string;
@@ -71,22 +72,27 @@ export function HeroSection({ className }: HeroSectionProps) {
     origin: 'Chile',
     destination: null,
     dates: {
-      departureDate: undefined,
-      returnDate: undefined,
+      departure_date: undefined,
+      return_date: undefined,
     },
     travelers: [{ age: 35 }]
   });
 
   const navigate = useNavigate();
   
-  // Obtener la configuración de colores del store
-  const { settings } = useSettingsStore();
-  
+  // Obtener configuración del sistema
+  const settings = useSettingsStore((state) => state.settings);
+  // Usar selectores individuales para evitar recrear objetos en cada renderizado
+  const contentData = useContentStore((state) => state.content);
+  const isLoading = useContentStore((state) => state.isLoading);
+  const error = useContentStore((state) => state.error);
+  const primaryColor = settings?.primaryColor || '#3b82f6';
+
   // Function to handle form submission
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     // Validar datos necesarios
-    if (!formData.destination || !formData.dates.departureDate || !formData.dates.returnDate) {
+    if (!formData.destination || !formData.dates.departure_date || !formData.dates.return_date) {
       toast({
         title: "Datos incompletos",
         description: "Por favor, completa todos los campos necesarios.",
@@ -97,8 +103,8 @@ export function HeroSection({ className }: HeroSectionProps) {
 
     // Preparar los datos de la cotización
     const quotationData = {
-      startDate: formData.dates.departureDate.toISOString().split('T')[0],
-      endDate: formData.dates.returnDate.toISOString().split('T')[0],
+      startDate: formData.dates.departure_date!.toISOString().split('T')[0],
+      endDate: formData.dates.return_date!.toISOString().split('T')[0],
       travelers: formData.travelers.map(traveler => ({
         name: '',
         age: traveler.age.toString(),
@@ -116,10 +122,6 @@ export function HeroSection({ className }: HeroSectionProps) {
   }
 
   // Obtener los colores para el gradiente y elementos dinámicos
-  const primaryColor = useMemo(() => {
-    return settings?.branding?.primaryColor || '#ef4444';
-  }, [settings?.branding?.primaryColor]);
-  
   const darkerPrimaryColor = useMemo(() => {
     return getDarkerColor(primaryColor);
   }, [primaryColor]);
@@ -298,34 +300,43 @@ export function HeroSection({ className }: HeroSectionProps) {
       {/* Sección de descuentos */}
       <div className="bg-white py-12">
         <div className="container mx-auto px-4">
-          <h2 className="text-2xl md:text-3xl font-bold text-center text-gray-800 mb-8">Ofertas y Descuentos Especiales</h2>
+          <h2 className="text-2xl md:text-3xl font-bold text-center text-gray-800 mb-8">
+            {contentData?.discountSection?.sectionTitle || 'Ofertas y Descuentos Especiales'}
+          </h2>
+          <p className="text-center text-gray-600 mb-8 max-w-3xl mx-auto">
+            {contentData?.discountSection?.sectionSubtitle || 'Descubre nuestras mejores ofertas y descuentos para tus viajes'}
+          </p>
           
-          {settings?.content?.discountSection?.discounts && settings.content.discountSection.discounts.length > 0 ? (
+          {contentData?.discountSection?.discounts && contentData.discountSection.discounts.length > 0 ? (
             <div className="grid grid-cols-12 gap-4">
               {/* Primer descuento: ocupa 5 columnas de ancho */}
-              {settings.content.discountSection.discounts[0] && (
+              {contentData.discountSection.discounts[0] && contentData.discountSection.discounts[0].active !== false && (
                 <div className="col-span-12 md:col-span-5 rounded-xl overflow-hidden shadow-md border border-gray-100 transition-all duration-300 hover:shadow-lg">
                   <div className="relative h-64 md:h-full">
                     <div 
                       className="absolute inset-0 bg-cover bg-center"
-                      style={{ backgroundImage: settings.content.discountSection.discounts[0].imageSrc ? 
-                        `url(${settings.content.discountSection.discounts[0].imageSrc})` : 
+                      style={{ backgroundImage: contentData.discountSection.discounts[0].imageSrc ? 
+                        `url(${contentData.discountSection.discounts[0].imageSrc})` : 
                         `linear-gradient(135deg, ${primaryColor}30, ${primaryColor}60)` 
                       }}
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
                     <div className="relative h-full flex flex-col justify-end p-6 z-10">
-                      <span className="inline-flex items-center rounded-full bg-primary/90 px-2.5 py-1 text-xs font-semibold text-white">
-                        {settings.content.discountSection.discounts[0].discountPercentage}% OFF
-                      </span>
-                      <h3 className="text-xl font-semibold text-white mt-2 mb-1">{settings.content.discountSection.discounts[0].title}</h3>
-                      <p className="text-white/80 text-sm mb-4">{settings.content.discountSection.discounts[0].description}</p>
-                      <Button 
-                        variant="outline" 
-                        className="bg-white/10 backdrop-blur-sm text-white border-white/20 hover:bg-white/20 hover:text-white w-full md:w-auto"
-                      >
-                        Ver oferta
-                      </Button>
+                      <div className="absolute top-0 left-0 mt-4 ml-4">
+                        <span className="inline-flex items-center rounded-full bg-primary px-2.5 py-1 text-xs font-semibold text-white shadow-sm">
+                          {contentData.discountSection.discounts[0].discountPercentage}% OFF
+                        </span>
+                      </div>
+                      <h3 className="text-xl font-semibold text-white mt-2 mb-1 drop-shadow-sm">{contentData.discountSection.discounts[0].title}</h3>
+                      <p className="text-white text-sm mb-4 drop-shadow-sm font-medium">{contentData.discountSection.discounts[0].description}</p>
+                      <div className="flex justify-center">
+                        <Button 
+                          variant="outline" 
+                          className="bg-white text-primary border-white hover:bg-white/90 hover:text-primary font-medium shadow-sm px-5 py-2"
+                        >
+                          Ver oferta
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -334,58 +345,66 @@ export function HeroSection({ className }: HeroSectionProps) {
               {/* Columna con dos descuentos apilados verticalmente, cada uno de 7 columnas de ancho */}
               <div className="col-span-12 md:col-span-7 grid grid-cols-1 md:grid-rows-2 gap-4">
                 {/* Segundo descuento */}
-                {settings.content.discountSection.discounts[1] && (
+                {contentData?.discountSection?.discounts?.[1] && (
                   <div className="rounded-xl overflow-hidden shadow-md border border-gray-100 transition-all duration-300 hover:shadow-lg">
                     <div className="relative h-44">
                       <div 
                         className="absolute inset-0 bg-cover bg-center"
-                        style={{ backgroundImage: settings.content.discountSection.discounts[1].imageSrc ? 
-                          `url(${settings.content.discountSection.discounts[1].imageSrc})` : 
+                        style={{ backgroundImage: contentData?.discountSection?.discounts?.[1]?.imageSrc ? 
+                          `url(${contentData.discountSection.discounts[1].imageSrc})` : 
                           `linear-gradient(135deg, ${primaryColor}30, ${primaryColor}60)` 
                         }}
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
                       <div className="relative h-full flex flex-col justify-end p-6 z-10">
-                        <span className="inline-flex items-center rounded-full bg-primary/90 px-2.5 py-1 text-xs font-semibold text-white">
-                          {settings.content.discountSection.discounts[1].discountPercentage}% OFF
-                        </span>
-                        <h3 className="text-xl font-semibold text-white mt-2 mb-1">{settings.content.discountSection.discounts[1].title}</h3>
-                        <p className="text-white/80 text-sm hidden md:block mb-2">{settings.content.discountSection.discounts[1].description}</p>
-                        <Button 
-                          variant="outline" 
-                          className="bg-white/10 backdrop-blur-sm text-white border-white/20 hover:bg-white/20 hover:text-white w-full md:w-auto"
-                        >
-                          Ver oferta
-                        </Button>
+                        <div className="absolute top-0 left-0 mt-4 ml-4">
+                          <span className="inline-flex items-center rounded-full bg-primary px-2.5 py-1 text-xs font-semibold text-white shadow-sm">
+                            {contentData.discountSection.discounts[1].discountPercentage}% OFF
+                          </span>
+                        </div>
+                        <h3 className="text-lg font-semibold text-white mt-2 mb-1 drop-shadow-sm">{contentData.discountSection.discounts[1].title}</h3>
+                        <p className="text-white text-sm mb-3 drop-shadow-sm font-medium line-clamp-2">{contentData.discountSection.discounts[1].description}</p>
+                        <div className="flex justify-center">
+                          <Button 
+                            variant="outline" 
+                            className="bg-white text-primary border-white hover:bg-white/90 hover:text-primary font-medium shadow-sm px-5 py-2"
+                          >
+                            Ver oferta
+                          </Button>
+                        </div>
                       </div>
                     </div>
                   </div>
                 )}
                 
                 {/* Tercer descuento */}
-                {settings.content.discountSection.discounts[2] && (
+                {contentData?.discountSection?.discounts?.[2] && (
                   <div className="rounded-xl overflow-hidden shadow-md border border-gray-100 transition-all duration-300 hover:shadow-lg">
                     <div className="relative h-44">
                       <div 
                         className="absolute inset-0 bg-cover bg-center"
-                        style={{ backgroundImage: settings.content.discountSection.discounts[2].imageSrc ? 
-                          `url(${settings.content.discountSection.discounts[2].imageSrc})` : 
+                        style={{ backgroundImage: contentData?.discountSection?.discounts?.[2]?.imageSrc ? 
+                          `url(${contentData.discountSection.discounts[2].imageSrc})` : 
                           `linear-gradient(135deg, ${primaryColor}30, ${primaryColor}60)` 
                         }}
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
                       <div className="relative h-full flex flex-col justify-end p-6 z-10">
-                        <span className="inline-flex items-center rounded-full bg-primary/90 px-2.5 py-1 text-xs font-semibold text-white">
-                          {settings.content.discountSection.discounts[2].discountPercentage}% OFF
-                        </span>
-                        <h3 className="text-xl font-semibold text-white mt-2 mb-1">{settings.content.discountSection.discounts[2].title}</h3>
-                        <p className="text-white/80 text-sm hidden md:block mb-2">{settings.content.discountSection.discounts[2].description}</p>
-                        <Button 
-                          variant="outline" 
-                          className="bg-white/10 backdrop-blur-sm text-white border-white/20 hover:bg-white/20 hover:text-white w-full md:w-auto"
-                        >
-                          Ver oferta
-                        </Button>
+                        <div className="absolute top-0 left-0 mt-4 ml-4">
+                          <span className="inline-flex items-center rounded-full bg-primary px-2.5 py-1 text-xs font-semibold text-white shadow-sm">
+                            {contentData.discountSection.discounts[2].discountPercentage}% OFF
+                          </span>
+                        </div>
+                        <h3 className="text-lg font-semibold text-white mt-2 mb-1 drop-shadow-sm">{contentData.discountSection.discounts[2].title}</h3>
+                        <p className="text-white text-sm mb-3 drop-shadow-sm font-medium line-clamp-2">{contentData.discountSection.discounts[2].description}</p>
+                        <div className="flex justify-center">
+                          <Button 
+                            variant="outline" 
+                            className="bg-white text-primary border-white hover:bg-white/90 hover:text-primary font-medium shadow-sm px-5 py-2"
+                          >
+                            Ver oferta
+                          </Button>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -394,81 +413,93 @@ export function HeroSection({ className }: HeroSectionProps) {
               
               {/* Fila inferior con tres descuentos, cada uno de 4 columnas de ancho */}
               <div className="col-span-12 md:col-span-4 rounded-xl overflow-hidden shadow-md border border-gray-100 transition-all duration-300 hover:shadow-lg">
-                {settings.content.discountSection.discounts[3] && (
+                {contentData?.discountSection?.discounts?.[3] && (
                   <div className="relative h-44">
                     <div 
                       className="absolute inset-0 bg-cover bg-center"
-                      style={{ backgroundImage: settings.content.discountSection.discounts[3].imageSrc ? 
-                        `url(${settings.content.discountSection.discounts[3].imageSrc})` : 
+                      style={{ backgroundImage: contentData?.discountSection?.discounts?.[3]?.imageSrc ? 
+                        `url(${contentData.discountSection.discounts[3].imageSrc})` : 
                         `linear-gradient(135deg, ${primaryColor}30, ${primaryColor}60)` 
                       }}
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
                     <div className="relative h-full flex flex-col justify-end p-6 z-10">
-                      <span className="inline-flex items-center rounded-full bg-primary/90 px-2.5 py-1 text-xs font-semibold text-white">
-                        {settings.content.discountSection.discounts[3].discountPercentage}% OFF
-                      </span>
-                      <h3 className="text-lg font-semibold text-white mt-2 mb-1">{settings.content.discountSection.discounts[3].title}</h3>
-                      <Button 
-                        variant="outline" 
-                        className="bg-white/10 backdrop-blur-sm text-white border-white/20 hover:bg-white/20 hover:text-white w-full mt-2"
-                      >
-                        Ver oferta
-                      </Button>
+                      <div className="absolute top-0 left-0 mt-4 ml-4">
+                        <span className="inline-flex items-center rounded-full bg-primary px-2.5 py-1 text-xs font-semibold text-white shadow-sm">
+                          {contentData.discountSection.discounts[3].discountPercentage}% OFF
+                        </span>
+                      </div>
+                      <h3 className="text-lg font-semibold text-white mt-2 mb-1 drop-shadow-sm">{contentData.discountSection.discounts[3].title}</h3>
+                      <div className="flex justify-center mt-2">
+                        <Button 
+                          variant="outline" 
+                          className="bg-white text-primary border-white hover:bg-white/90 hover:text-primary font-medium shadow-sm px-5 py-2"
+                        >
+                          Ver oferta
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 )}
               </div>
               
               <div className="col-span-12 md:col-span-4 rounded-xl overflow-hidden shadow-md border border-gray-100 transition-all duration-300 hover:shadow-lg">
-                {settings.content.discountSection.discounts[4] && (
+                {contentData?.discountSection?.discounts?.[4] && (
                   <div className="relative h-44">
                     <div 
                       className="absolute inset-0 bg-cover bg-center"
-                      style={{ backgroundImage: settings.content.discountSection.discounts[4].imageSrc ? 
-                        `url(${settings.content.discountSection.discounts[4].imageSrc})` : 
+                      style={{ backgroundImage: contentData?.discountSection?.discounts?.[4]?.imageSrc ? 
+                        `url(${contentData.discountSection.discounts[4].imageSrc})` : 
                         `linear-gradient(135deg, ${primaryColor}30, ${primaryColor}60)` 
                       }}
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
                     <div className="relative h-full flex flex-col justify-end p-6 z-10">
-                      <span className="inline-flex items-center rounded-full bg-primary/90 px-2.5 py-1 text-xs font-semibold text-white">
-                        {settings.content.discountSection.discounts[4].discountPercentage}% OFF
-                      </span>
-                      <h3 className="text-lg font-semibold text-white mt-2 mb-1">{settings.content.discountSection.discounts[4].title}</h3>
-                      <Button 
-                        variant="outline" 
-                        className="bg-white/10 backdrop-blur-sm text-white border-white/20 hover:bg-white/20 hover:text-white w-full mt-2"
-                      >
-                        Ver oferta
-                      </Button>
+                      <div className="absolute top-0 left-0 mt-4 ml-4">
+                        <span className="inline-flex items-center rounded-full bg-primary px-2.5 py-1 text-xs font-semibold text-white shadow-sm">
+                          {contentData.discountSection.discounts[4].discountPercentage}% OFF
+                        </span>
+                      </div>
+                      <h3 className="text-lg font-semibold text-white mt-2 mb-1 drop-shadow-sm">{contentData.discountSection.discounts[4].title}</h3>
+                      <div className="flex justify-center mt-2">
+                        <Button 
+                          variant="outline" 
+                          className="bg-white text-primary border-white hover:bg-white/90 hover:text-primary font-medium shadow-sm px-5 py-2"
+                        >
+                          Ver oferta
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 )}
               </div>
               
               <div className="col-span-12 md:col-span-4 rounded-xl overflow-hidden shadow-md border border-gray-100 transition-all duration-300 hover:shadow-lg">
-                {settings.content.discountSection.discounts[5] && (
+                {contentData?.discountSection?.discounts?.[5] && (
                   <div className="relative h-44">
                     <div 
                       className="absolute inset-0 bg-cover bg-center"
-                      style={{ backgroundImage: settings.content.discountSection.discounts[5].imageSrc ? 
-                        `url(${settings.content.discountSection.discounts[5].imageSrc})` : 
+                      style={{ backgroundImage: contentData?.discountSection?.discounts?.[5]?.imageSrc ? 
+                        `url(${contentData.discountSection.discounts[5].imageSrc})` : 
                         `linear-gradient(135deg, ${primaryColor}30, ${primaryColor}60)` 
                       }}
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
                     <div className="relative h-full flex flex-col justify-end p-6 z-10">
-                      <span className="inline-flex items-center rounded-full bg-primary/90 px-2.5 py-1 text-xs font-semibold text-white">
-                        {settings.content.discountSection.discounts[5].discountPercentage}% OFF
-                      </span>
-                      <h3 className="text-lg font-semibold text-white mt-2 mb-1">{settings.content.discountSection.discounts[5].title}</h3>
-                      <Button 
-                        variant="outline" 
-                        className="bg-white/10 backdrop-blur-sm text-white border-white/20 hover:bg-white/20 hover:text-white w-full mt-2"
-                      >
-                        Ver oferta
-                      </Button>
+                      <div className="absolute top-0 left-0 mt-4 ml-4">
+                        <span className="inline-flex items-center rounded-full bg-primary px-2.5 py-1 text-xs font-semibold text-white shadow-sm">
+                          {contentData.discountSection.discounts[5].discountPercentage}% OFF
+                        </span>
+                      </div>
+                      <h3 className="text-lg font-semibold text-white mt-2 mb-1 drop-shadow-sm">{contentData.discountSection.discounts[5].title}</h3>
+                      <div className="flex justify-center mt-2">
+                        <Button 
+                          variant="outline" 
+                          className="bg-white text-primary border-white hover:bg-white/90 hover:text-primary font-medium shadow-sm px-5 py-2"
+                        >
+                          Ver oferta
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 )}

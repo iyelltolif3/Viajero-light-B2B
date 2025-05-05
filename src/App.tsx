@@ -10,6 +10,7 @@ import { Footer } from '@/components/Footer';
 import AppRoutes from '@/routes';
 import { useSettingsStore } from '@/store/settingsStore';
 import { usePlansStore } from '@/store/plansStore';
+import { useContentStore } from '@/store/contentStore';
 import { useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLocation } from 'react-router-dom';
@@ -27,6 +28,7 @@ const queryClient = new QueryClient({
 function AppContent() {
   const { fetchSettings } = useSettingsStore();
   const { fetchPlans } = usePlansStore();
+  const { initializeContent } = useContentStore();
   const { user, isAdmin } = useAuth();
   const location = useLocation();
 
@@ -36,7 +38,8 @@ function AppContent() {
       try {
         await Promise.all([
           fetchSettings(),
-          fetchPlans()
+          fetchPlans(),
+          initializeContent()
         ]);
       } catch (error) {
         console.error('Error loading initial data:', error);

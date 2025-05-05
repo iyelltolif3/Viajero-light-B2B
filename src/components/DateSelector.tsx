@@ -8,17 +8,17 @@ import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 
 interface DateSelectorProps {
   className?: string;
-  onDatesChange?: (dates: { departureDate: Date | undefined; returnDate: Date | undefined }) => void;
+  onDatesChange?: (dates: { departure_date: Date | undefined; return_date: Date | undefined }) => void;
 }
 
 const DateSelector = ({ className, onDatesChange }: DateSelectorProps) => {
   const [open, setOpen] = useState(false);
   const [dates, setDates] = useState<{
-    departureDate: Date | undefined;
-    returnDate: Date | undefined;
+    departure_date: Date | undefined;
+    return_date: Date | undefined;
   }>({
-    departureDate: undefined,
-    returnDate: undefined,
+    departure_date: undefined,
+    return_date: undefined,
   });
 
   const [activeCalendar, setActiveCalendar] = useState<'departure' | 'return'>('departure');
@@ -27,7 +27,7 @@ const DateSelector = ({ className, onDatesChange }: DateSelectorProps) => {
 
   // Minimum dates (today for departure, departure date + 1 day for return)
   const today = new Date();
-  const minReturnDate = dates.departureDate ? addDays(dates.departureDate, 1) : today;
+  const minReturnDate = dates.departure_date ? addDays(dates.departure_date, 1) : today;
 
   // Function to handle date selection
   const handleSelect = useCallback((date: Date | undefined) => {
@@ -35,11 +35,11 @@ const DateSelector = ({ className, onDatesChange }: DateSelectorProps) => {
       // If selecting departure date
       if (date) {
         // If return date exists and is before the new departure date, clear return date
-        const newReturnDate = dates.returnDate && isBefore(dates.returnDate, date) 
+        const newReturnDate = dates.return_date && isBefore(dates.return_date, date) 
           ? undefined 
-          : dates.returnDate;
+          : dates.return_date;
           
-        const newDates = { departureDate: date, returnDate: newReturnDate };
+        const newDates = { departure_date: date, return_date: newReturnDate };
         setDates(newDates);
         onDatesChange?.(newDates);
         
@@ -48,19 +48,20 @@ const DateSelector = ({ className, onDatesChange }: DateSelectorProps) => {
           setActiveCalendar('return');
         }
       } else {
-        const newDates = { ...dates, departureDate: undefined };
+        const newDates = { ...dates, departure_date: undefined };
         setDates(newDates);
         onDatesChange?.(newDates);
       }
     } else {
       // If selecting return date
-      const newDates = { ...dates, returnDate: date };
-      setDates(newDates);
-      onDatesChange?.(newDates);
-      
-      // If both dates are set, close the popover
-      if (dates.departureDate && date) {
-        setTimeout(() => setOpen(false), 300);
+      if (date) {
+        const newDates = { ...dates, return_date: date };
+        setDates(newDates);
+        onDatesChange?.(newDates);
+      } else {
+        const newDates = { ...dates, return_date: undefined };
+        setDates(newDates);
+        onDatesChange?.(newDates);
       }
     }
   }, [activeCalendar, dates, onDatesChange]);
@@ -74,9 +75,9 @@ const DateSelector = ({ className, onDatesChange }: DateSelectorProps) => {
     
     // Si estamos seleccionando la fecha de salida y no hay fecha de regreso seleccionada
     if (activeCalendar === 'departure') {
-      if (dates.returnDate) {
+      if (dates.return_date) {
         // Calcular días entre la fecha bajo el cursor y la fecha de regreso
-        const days = differenceInDays(dates.returnDate, hoveredDate);
+        const days = differenceInDays(dates.return_date, hoveredDate);
         if (days >= 0) {
           setPreviewDays(days);
         } else {
@@ -87,9 +88,9 @@ const DateSelector = ({ className, onDatesChange }: DateSelectorProps) => {
       }
     }
     // Si estamos seleccionando la fecha de regreso y hay fecha de salida
-    else if (activeCalendar === 'return' && dates.departureDate) {
+    else if (activeCalendar === 'return' && dates.departure_date) {
       // Calcular días entre la fecha de salida y la fecha bajo el cursor
-      const days = differenceInDays(hoveredDate, dates.departureDate);
+      const days = differenceInDays(hoveredDate, dates.departure_date);
       if (days >= 0) {
         setPreviewDays(days);
       } else {
@@ -98,7 +99,7 @@ const DateSelector = ({ className, onDatesChange }: DateSelectorProps) => {
     } else {
       setPreviewDays(null);
     }
-  }, [hoveredDate, dates.departureDate, dates.returnDate, activeCalendar]);
+  }, [hoveredDate, dates.departure_date, dates.return_date, activeCalendar]);
 
   // Handler para cuando el cursor entra en una fecha
   const handleDayMouseEnter = useCallback((date: Date) => {
@@ -110,6 +111,16 @@ const DateSelector = ({ className, onDatesChange }: DateSelectorProps) => {
     setHoveredDate(null);
     setPreviewDays(null);
   }, []);
+
+  // Close dialog when both dates are selected
+  useEffect(() => {
+    if (dates.departure_date && dates.return_date) {
+      const timer = setTimeout(() => {
+        setOpen(false);
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [dates.departure_date, dates.return_date]);
 
   return (
     <div className={cn("space-y-1.5", className)}>
@@ -125,12 +136,12 @@ const DateSelector = ({ className, onDatesChange }: DateSelectorProps) => {
                 variant="outline"
                 className={cn(
                   "w-full justify-start text-left font-normal bg-background/80 backdrop-blur-sm",
-                  !dates.departureDate && "text-muted-foreground",
+                  !dates.departure_date && "text-muted-foreground",
                   activeCalendar === 'departure' && open && "ring-2 ring-primary ring-opacity-50"
                 )}
               >
                 <CalendarIcon className="mr-2 h-4 w-4" />
-                {dates.departureDate ? format(dates.departureDate, "MMMM d, yyyy") : "Selecciona fecha de salida"}
+                {dates.departure_date ? format(dates.departure_date, "MMMM d, yyyy") : "Selecciona fecha de salida"}
               </Button>
             </DialogTrigger>
             <DialogContent className="w-[90vw] max-w-[450px] p-4 bg-card">
@@ -163,7 +174,7 @@ const DateSelector = ({ className, onDatesChange }: DateSelectorProps) => {
                 </div>
                 <CalendarComponent
                   mode="single"
-                  selected={activeCalendar === 'departure' ? dates.departureDate : dates.returnDate}
+                  selected={activeCalendar === 'departure' ? dates.departure_date : dates.return_date}
                   onSelect={handleSelect}
                   initialFocus
                   disabled={(date) => {
@@ -172,7 +183,7 @@ const DateSelector = ({ className, onDatesChange }: DateSelectorProps) => {
                       return isBefore(date, today) && !isSameDay(date, today);
                     }
                     // For return: disable dates before departure date + 1 day
-                    return !dates.departureDate || 
+                    return !dates.departure_date || 
                       isBefore(date, minReturnDate) && 
                       !isSameDay(date, minReturnDate);
                   }}
@@ -182,13 +193,13 @@ const DateSelector = ({ className, onDatesChange }: DateSelectorProps) => {
                     caption_label: "text-sm font-medium text-primary"
                   }}
                   modifiers={{
-                    departure: (date) => dates.departureDate ? isSameDay(date, dates.departureDate) : false,
-                    return: (date) => dates.returnDate ? isSameDay(date, dates.returnDate) : false,
+                    departure: (date) => dates.departure_date ? isSameDay(date, dates.departure_date) : false,
+                    return: (date) => dates.return_date ? isSameDay(date, dates.return_date) : false,
                     inRange: (date) => {
-                      return dates.departureDate && 
-                             dates.returnDate && 
-                             isAfter(date, dates.departureDate) && 
-                             isBefore(date, dates.returnDate);
+                      return dates.departure_date && 
+                             dates.return_date && 
+                             isAfter(date, dates.departure_date) && 
+                             isBefore(date, dates.return_date);
                     },
                     // Estilos para previsualización de rango al pasar el cursor
                     previewRange: (date) => {
@@ -196,14 +207,14 @@ const DateSelector = ({ className, onDatesChange }: DateSelectorProps) => {
 
                       // Vista previa al seleccionar fecha de salida
                       if (activeCalendar === 'departure') {
-                        return dates.returnDate && 
+                        return dates.return_date && 
                                isAfter(date, hoveredDate) && 
-                               isBefore(date, dates.returnDate);
+                               isBefore(date, dates.return_date);
                       }
                       // Vista previa al seleccionar fecha de regreso
                       else if (activeCalendar === 'return') {
-                        return dates.departureDate && 
-                               isAfter(date, dates.departureDate) && 
+                        return dates.departure_date && 
+                               isAfter(date, dates.departure_date) && 
                                isBefore(date, hoveredDate);
                       }
                       return false;
@@ -229,20 +240,20 @@ const DateSelector = ({ className, onDatesChange }: DateSelectorProps) => {
                 <div className="pt-4 text-sm border-t mt-2">
                   <div className="flex justify-between items-center">
                     <p className="font-medium">
-                      {dates.departureDate ? 
-                        (dates.returnDate ? 
-                          `${format(dates.departureDate, "MMM d")} - ${format(dates.returnDate, "MMM d, yyyy")}` : 
-                          (hoveredDate && activeCalendar === 'return' && isAfter(hoveredDate, dates.departureDate) ? 
-                            `${format(dates.departureDate, "MMM d")} - ${format(hoveredDate, "MMM d, yyyy")}` : 
+                      {dates.departure_date ? 
+                        (dates.return_date ? 
+                          `${format(dates.departure_date, "MMM d")} - ${format(dates.return_date, "MMM d, yyyy")}` : 
+                          (hoveredDate && activeCalendar === 'return' && isAfter(hoveredDate, dates.departure_date) ? 
+                            `${format(dates.departure_date, "MMM d")} - ${format(hoveredDate, "MMM d, yyyy")}` : 
                             "Selecciona fecha de regreso")) : 
                         "Selecciona fechas"}
                     </p>
                     {/* Badge con número de días */}
-                    {(dates.departureDate && dates.returnDate) || previewDays ? (
+                    {(dates.departure_date && dates.return_date) || previewDays ? (
                       <span className="px-3 py-1 bg-primary text-primary-foreground rounded-full text-sm font-bold transition-all">
                         {previewDays !== null ? 
                           `${previewDays} días` : 
-                          `${differenceInDays(dates.returnDate!, dates.departureDate!)} días`}
+                          `${differenceInDays(dates.return_date!, dates.departure_date!)} días`}
                       </span>
                     ) : null}
                   </div>
@@ -261,7 +272,7 @@ const DateSelector = ({ className, onDatesChange }: DateSelectorProps) => {
             variant="outline"
             className={cn(
               "w-full justify-start text-left font-normal bg-background/80 backdrop-blur-sm",
-              !dates.returnDate && "text-muted-foreground",
+              !dates.return_date && "text-muted-foreground",
               activeCalendar === 'return' && open && "ring-2 ring-primary ring-opacity-50"
             )}
             onClick={() => {
@@ -270,7 +281,7 @@ const DateSelector = ({ className, onDatesChange }: DateSelectorProps) => {
             }}
           >
             <CalendarIcon className="mr-2 h-4 w-4" />
-            {dates.returnDate ? format(dates.returnDate, "MMMM d, yyyy") : "Selecciona fecha de regreso"}
+            {dates.return_date ? format(dates.return_date, "MMMM d, yyyy") : "Selecciona fecha de regreso"}
           </Button>
         </div>
       </div>
