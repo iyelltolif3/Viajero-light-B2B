@@ -338,25 +338,30 @@ export default function AdminSettings() {
   };
   
   const handleSaveZone = async (zone: Zone) => {
-    // Actualizar la zona en localSettings
+    // Actualizar la zona en localSettings primero
     handleUpdateZone(zone.id, zone);
-    // Guardar todos los cambios en el servidor pero prevenir navegación
+    console.log('Intentando guardar zona con datos:', JSON.stringify(zone, null, 2));
+    
+    // Asegurarse de que settings_id esté establecido correctamente
+    if (!zone.settings_id && localSettings.id) {
+      zone.settings_id = localSettings.id;
+      handleUpdateZone(zone.id, { settings_id: localSettings.id });
+    }
+    
+    // Guardar solo esta zona usando el nuevo método
     try {
-      await saveSettings();
+      // Llamar directamente al método saveZone que hemos creado
+      await useSettingsStore.getState().saveZone(zone);
+      
       // Importante: No hacer nada que pueda causar recarga o navegación
-      toast({
-        title: "Zona guardada",
-        description: "Los cambios han sido aplicados exitosamente.",
-      });
-      // Asegurarnos de que tenemos los cambios más recientes sin recargar
+      // (No es necesario mostrar toast aquí ya que saveZone ya lo hace)
+      
+      // Marcar cambios como guardados
       setHasUnsavedChanges(false);
+      
     } catch (error) {
       console.error('Error al guardar zona:', error);
-      toast({
-        title: "Error",
-        description: "Hubo un problema al guardar los cambios.",
-        variant: "destructive"
-      });
+      // No es necesario mostrar toast aquí ya que saveZone ya lo hace
     }
   };
   
@@ -504,31 +509,17 @@ export default function AdminSettings() {
         <TabsContent value="zones">
           <Card>
             <CardHeader>
-              <div className="flex justify-between">
-                <CardTitle>Zonas</CardTitle>
-                <div className="flex space-x-2">
-                  {hasUnsavedChanges && (
+                <div className="flex justify-between">
+                  <CardTitle>Zonas</CardTitle>
+                  <div className="flex space-x-2">
                     <Button
-                      onClick={() => {
-                        saveSettings();
-                        setHasUnsavedChanges(false);
-                        toast({
-                          title: "Configuración guardada",
-                          description: "Todos los cambios han sido aplicados exitosamente.",
-                        });
-                      }}
+                      onClick={handleAddZone}
                     >
-                      Guardar Cambios
+                      <Plus className="h-4 w-4 mr-2" />
+                      Nueva Zona
                     </Button>
-                  )}
-                  <Button
-                    onClick={handleAddZone}
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Nueva Zona
-                  </Button>
+                  </div>
                 </div>
-              </div>
               <CardDescription>
                 Configura las zonas y sus multiplicadores de precio
               </CardDescription>

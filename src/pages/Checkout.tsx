@@ -5,7 +5,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/contexts/AuthContext';
 import { Check, ArrowLeft, Calculator } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
+import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import DateSelector from '@/components/DateSelector';
 import DestinationSelector from '@/components/DestinationSelector';
@@ -45,6 +46,12 @@ interface LocationState {
   };
 }
 
+interface TravellerBirthDate {
+  day: string;
+  month: string;
+  year: string;
+}
+
 interface CheckoutFormData {
   destination: Destination | null;
   dates: {
@@ -53,6 +60,13 @@ interface CheckoutFormData {
   };
   travelers: {
     age: number;
+    birthDate?: TravellerBirthDate;
+    gender?: string;
+    firstName?: string;
+    lastName?: string;
+    documentType?: string;
+    documentNumber?: string;
+    ageCalculated?: boolean;
   }[];
   contactInfo: {
     phone: string;
@@ -67,6 +81,13 @@ interface QuoteResult {
   total: number;
   pricePerDay: number;
   currency: string;
+  // Propiedades adicionales para manejar la inicialización del formulario
+  destination?: Destination;
+  departureDate?: Date;
+  returnDate?: Date;
+  travelers?: {
+    age: number;
+  }[];
 }
 
 export default function Checkout() {
@@ -76,18 +97,172 @@ export default function Checkout() {
   const { selectedPlan, quotationData } = (location.state as LocationState) || {};
   const { addAssistance } = useAssistancesStore();
   
+  // Estado para tracking de validación de campos
+  const [validationState, setValidationState] = useState<{
+    [travelerId: number]: {
+      firstName: boolean;
+      lastName: boolean;
+      documentNumber: boolean;
+      documentType: boolean;
+      gender: boolean;
+      birthDate: boolean;
+    };
+  }>({});
+  
+  // Mensajes de validación
+  const [validationMessages, setValidationMessages] = useState<{
+    [travelerId: number]: {
+      [field: string]: string;
+    };
+  }>({});
+
+  // Funciones de validación
+  const validateName = useCallback((name: string): boolean => {
+    return name.trim().length >= 2;
+  }, []);
+
+  const validateDocumentNumber = useCallback((docType: string, number: string): boolean => {
+    if (!docType || !number) return false;
+    
+    // RUT chileno: 12345678-9
+    if (docType === 'RUT') {
+      return /^\d{7,8}-?\d{1}$/.test(number);
+    }
+    // DNI: alfanumérico, al menos 5 caracteres
+    else if (docType === 'DNI') {
+      return /^[A-Za-z0-9]{5,}$/.test(number);
+    }
+    // Pasaporte: alfanumérico, al menos 6 caracteres
+    else if (docType === 'PASSPORT') {
+      return /^[A-Za-z0-9]{6,}$/.test(number);
+    }
+    return false;
+  }, []);
+
+  const validateBirthDate = useCallback((birthDate?: TravellerBirthDate): boolean => {
+    if (!birthDate) return false;
+    const { day, month, year } = birthDate;
+    
+    if (!day || !month || !year) return false;
+    if (day.length !== 2 || month.length !== 2 || year.length !== 4) return false;
+    
+    const dayNum = parseInt(day);
+    const monthNum = parseInt(month);
+    const yearNum = parseInt(year);
+    
+    if (dayNum < 1 || dayNum > 31) return false;
+    if (monthNum < 1 || monthNum > 12) return false;
+    if (yearNum < 1900 || yearNum > new Date().getFullYear()) return false;
+    
+    // Validar fecha completa
+    const date = new Date(`${year}-${month}-${day}`);
+    return !isNaN(date.getTime());
+  }, []);
+
+  // Función para actualizar el estado de validación
+  const updateValidation = useCallback((travelerId: number, field: string, isValid: boolean, message?: string) => {
+    setValidationState(prev => ({
+      ...prev,
+      [travelerId]: {
+        ...prev[travelerId],
+        [field]: isValid
+      }
+    }));
+    
+    if (message) {
+      setValidationMessages(prev => ({
+        ...prev,
+        [travelerId]: {
+          ...prev[travelerId],
+          [field]: message
+        }
+      }));
+    }
+  }, []);
+
+  const initValidationState = useCallback((travelers: any[]) => {
+    const initialState: any = {};
+    travelers.forEach((_, index) => {
+      initialState[index] = {
+        firstName: false,
+        lastName: false,
+        documentNumber: false,
+        documentType: false,
+        gender: false,
+        birthDate: false
+      };
+    });
+    setValidationState(initialState);
+  }, []);
+
   const [formData, setFormData] = useState<CheckoutFormData>({
     destination: null,
     dates: {
       departureDate: null,
-      returnDate: null
+      returnDate: null,
     },
     travelers: [],
     contactInfo: {
-      phone: "+56",
-      email: user?.email || ""
-    }
+      phone: "",
+      email: "",
+    },
   });
+  
+  // Inicializar el estado de validación cuando se carguen o cambien los viajeros
+  useEffect(() => {
+    if (formData.travelers.length > 0) {
+      initValidationState(formData.travelers);
+    }
+  }, [formData.travelers.length, initValidationState]);
+
+  // Función para calcular la edad a partir de la fecha de nacimiento
+  const calculateAge = (travelerIndex: number, birthDate: TravellerBirthDate) => {
+    const { day, month, year } = birthDate;
+    
+    // Validar que todos los campos estén completos y sean válidos
+    if (!day || !month || !year || day === '' || month === '' || year === '') {
+      return;
+    }
+    
+    if (parseInt(day) < 1 || parseInt(day) > 31 || parseInt(month) < 1 || parseInt(month) > 12 || year.length !== 4) {
+      return;
+    }
+    
+    const birthDateObj = new Date(`${year}-${month}-${day}`);
+    const today = new Date();
+    
+    // Verificar que la fecha sea válida
+    if (isNaN(birthDateObj.getTime())) {
+      return;
+    }
+    
+    let age = today.getFullYear() - birthDateObj.getFullYear();
+    const monthDiff = today.getMonth() - birthDateObj.getMonth();
+    
+    // Ajustar la edad si aún no ha cumplido años en este año
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDateObj.getDate())) {
+      age--;
+    }
+    
+    // Actualizar el estado con la edad calculada
+    const updatedTravelers = [...formData.travelers];
+    updatedTravelers[travelerIndex].age = age;
+    updatedTravelers[travelerIndex].ageCalculated = true;
+    
+    // Después de un tiempo, quitar el indicador visual
+    setTimeout(() => {
+      const resetHighlight = [...formData.travelers];
+      if (resetHighlight[travelerIndex]) {
+        resetHighlight[travelerIndex].ageCalculated = false;
+        setFormData(prev => ({ ...prev, travelers: resetHighlight }));
+      }
+    }, 2000);
+    
+    setFormData(prev => ({ ...prev, travelers: updatedTravelers }));
+  };
+
+  const [confirmEmail, setConfirmEmail] = useState(user?.email || "");
+  const [emailsMatch, setEmailsMatch] = useState(true);
 
   const [quoteData, setQuoteData] = useState<QuoteFormData>({
     origin: 'Chile',
@@ -107,6 +282,38 @@ export default function Checkout() {
   const [quote, setQuote] = useState<QuoteResult | null>(null);
 
   useEffect(() => {
+    if (quote) {
+      // Preparar travelers con la estructura correcta para el formulario
+      const initializedTravelers = (quote.travelers || []).map(traveler => ({
+        ...traveler,
+        birthDate: { day: '', month: '', year: '' },
+        gender: '',
+        firstName: '',
+        lastName: '',
+        documentType: '',
+        documentNumber: '',
+        ageCalculated: false
+      }));
+      
+      // Setup form data from quote
+      setFormData({
+        destination: quote.destination || null,
+        dates: {
+          departureDate: quote.departureDate || null,
+          returnDate: quote.returnDate || null,
+        },
+        travelers: initializedTravelers.length > 0 ? initializedTravelers : [],
+        contactInfo: {
+          phone: user?.phone || "+56",
+          email: user?.email || "",
+        },
+      });
+      
+      setConfirmEmail(user?.email || "");
+    }
+  }, [quote, user]);
+
+  useEffect(() => {
     if (quotationData) {
       setFormData({
         destination: quotationData.destination || null,
@@ -114,7 +321,16 @@ export default function Checkout() {
           departureDate: quotationData.startDate ? new Date(quotationData.startDate) : null,
           returnDate: quotationData.endDate ? new Date(quotationData.endDate) : null
         },
-        travelers: quotationData.travelers.map(t => ({ age: parseInt(t.age) })),
+        travelers: quotationData.travelers.map(t => ({
+          age: parseInt(t.age),
+          birthDate: { day: '', month: '', year: '' },
+          gender: '',
+          firstName: '',
+          lastName: '',
+          documentType: '',
+          documentNumber: '',
+          ageCalculated: false
+        })),
         contactInfo: {
           phone: "+56",
           email: user?.email || ""
@@ -129,7 +345,16 @@ export default function Checkout() {
           departureDate: quotationData.startDate ? new Date(quotationData.startDate) : undefined,
           returnDate: quotationData.endDate ? new Date(quotationData.endDate) : undefined,
         },
-        travelers: quotationData.travelers.map(t => ({ age: parseInt(t.age) })),
+        travelers: quotationData.travelers.map(t => ({
+          age: parseInt(t.age),
+          birthDate: { day: '', month: '', year: '' },
+          gender: '',
+          firstName: '',
+          lastName: '',
+          documentType: '',
+          documentNumber: '',
+          ageCalculated: false
+        })),
         contactInfo: {
           phone: "+56",
           email: user?.email || ""
@@ -205,19 +430,35 @@ export default function Checkout() {
 
     if (!emailRegex.test(formData.contactInfo.email)) {
       toast.error('Email inválido', {
-        description: 'Por favor ingrese un email válido'
+        description: 'Por favor ingresa un email válido'
       });
+      return false;
+    }
+
+    if (formData.contactInfo.email !== confirmEmail) {
+      toast.error('Los emails no coinciden', {
+        description: 'Por favor verifica que los emails ingresados sean iguales'
+      });
+      setEmailsMatch(false);
       return false;
     }
 
     if (!phoneRegex.test(formData.contactInfo.phone)) {
       toast.error('Teléfono inválido', {
-        description: 'Por favor ingrese un número válido con formato +56XXXXXXXXX'
+        description: 'Por favor ingresa un número de celular válido (9 dígitos)'
       });
       return false;
     }
-
+    
+    // Si todo es válido
     return true;
+  };
+  
+  // Función para manejar el cambio en el email de confirmación
+  const handleConfirmEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const confirmValue = e.target.value;
+    setConfirmEmail(confirmValue);
+    setEmailsMatch(formData.contactInfo.email === confirmValue);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -311,8 +552,67 @@ export default function Checkout() {
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-6">
-                {/* Sección de Recotización */}
-                <Card className="border-dashed">
+                {/* Tarjeta con resumen de información del viaje */}
+                <Card>
+                  <CardHeader className="pb-4">
+                    <CardTitle className="text-lg">Detalles del Viaje</CardTitle>
+                    <CardDescription>
+                      Esta es la información de su viaje
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="space-y-2">
+                        <h4 className="text-sm font-medium">Destino</h4>
+                        <p>{quoteData.destination?.name || 'No seleccionado'}</p>
+                      </div>
+                      <div className="space-y-2">
+                        <h4 className="text-sm font-medium">Fecha de salida</h4>
+                        <p>
+                          {quoteData.dates.departureDate
+                            ? new Date(quoteData.dates.departureDate).toLocaleDateString('es-ES', {
+                                day: '2-digit',
+                                month: '2-digit',
+                                year: 'numeric'
+                              })
+                            : 'No seleccionada'}
+                        </p>
+                      </div>
+                      <div className="space-y-2">
+                        <h4 className="text-sm font-medium">Fecha de regreso</h4>
+                        <p>
+                          {quoteData.dates.returnDate
+                            ? new Date(quoteData.dates.returnDate).toLocaleDateString('es-ES', {
+                                day: '2-digit',
+                                month: '2-digit',
+                                year: 'numeric'
+                              })
+                            : 'No seleccionada'}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between border-t pt-4">
+                      <div>
+                        <h4 className="text-sm font-medium">{formData.travelers.length} {formData.travelers.length === 1 ? 'viajero' : 'viajeros'}</h4>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          // Mostrar la sección de recotización
+                          document.getElementById('recotizar-section')?.classList.toggle('hidden');
+                        }}
+                        type="button"
+                      >
+                        <Calculator className="h-4 w-4 mr-2" />
+                        Recotizar
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+                
+                {/* Sección de Recotización (oculta por defecto) */}
+                <Card className="border-dashed hidden" id="recotizar-section">
                   <CardHeader className="pb-4">
                     <div className="flex items-center justify-between">
                       <div>
@@ -376,70 +676,385 @@ export default function Checkout() {
                   </CardContent>
                 </Card>
 
-                {/* Información de viajeros */}
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h3 className="font-medium">Información de Viajeros</h3>
-                    <span className="text-sm text-muted-foreground">
-                      {formData.travelers.length} {formData.travelers.length === 1 ? 'viajero' : 'viajeros'}
-                    </span>
-                  </div>
-                  {formData.travelers.map((traveler, index) => (
-                    <div key={index} className="relative grid grid-cols-1 md:grid-cols-2 gap-4 p-4 border rounded-lg">
-                      {formData.travelers.length > 1 && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="absolute -top-2 -right-2 h-8 w-8 rounded-full p-0"
-                          onClick={() => handleRemoveTraveler(index)}
-                        >
-                          ×
-                        </Button>
-                      )}
-                      <div className="space-y-2">
-                        <Label htmlFor={`age-${index}`}>Edad</Label>
-                        <Input
-                          id={`age-${index}`}
-                          value={traveler.age.toString()}
-                          readOnly
-                        />
+                {/* Información de viajeros - ahora con más campos */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Datos de los Pasajeros</CardTitle>
+                    <CardDescription>
+                      Ingresa los datos de cada uno de los pasajeros
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    {formData.travelers.map((traveler, index) => (
+                      <div key={index} className="relative space-y-4 p-4 border rounded-lg">
+                        <div className="flex items-center justify-between">
+                          <h3 className="font-medium">Pasajero {index + 1}</h3>
+                          {formData.travelers.length > 1 && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 rounded-full p-0"
+                              onClick={() => handleRemoveTraveler(index)}
+                            >
+                              ×
+                            </Button>
+                          )}
+                        </div>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label htmlFor={`name-${index}`}>Nombre/s completo/s</Label>
+                            <div className="relative">
+                              <Input
+                                id={`name-${index}`}
+                                placeholder="Tu/s nombre/s completo/s"
+                                value={formData.travelers[index]?.firstName || ''}
+                                className={`${validationState[index]?.firstName ? 'pr-10 border-green-500 focus:border-green-500 focus:ring-green-500' : ''}`}
+                                onChange={(e) => {
+                                  const firstName = e.target.value;
+                                  const updatedTravelers = [...formData.travelers];
+                                  updatedTravelers[index].firstName = firstName;
+                                  setFormData(prev => ({ ...prev, travelers: updatedTravelers }));
+                                  
+                                  // Validar el nombre
+                                  const isValid = validateName(firstName);
+                                  updateValidation(index, 'firstName', isValid);
+                                }}
+                              />
+                              {validationState[index]?.firstName && (
+                                <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-green-500">
+                                  <Check size={18} />
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor={`surname-${index}`}>Apellido/s</Label>
+                            <div className="relative">
+                              <Input
+                                id={`surname-${index}`}
+                                placeholder="Tu/s apellido/s completo/s"
+                                value={formData.travelers[index]?.lastName || ''}
+                                className={`${validationState[index]?.lastName ? 'pr-10 border-green-500 focus:border-green-500 focus:ring-green-500' : ''}`}
+                                onChange={(e) => {
+                                  const lastName = e.target.value;
+                                  const updatedTravelers = [...formData.travelers];
+                                  updatedTravelers[index].lastName = lastName;
+                                  setFormData(prev => ({ ...prev, travelers: updatedTravelers }));
+                                  
+                                  // Validar el apellido
+                                  const isValid = validateName(lastName);
+                                  updateValidation(index, 'lastName', isValid);
+                                }}
+                              />
+                              {validationState[index]?.lastName && (
+                                <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-green-500">
+                                  <Check size={18} />
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label htmlFor={`document-${index}`}>Documento</Label>
+                            <div className="flex gap-2 relative">
+                              <select 
+                                className={`flex h-10 w-[100px] rounded-md border ${validationState[index]?.documentType ? 'border-green-500' : 'border-input'} bg-background px-3 py-2 text-sm ring-offset-background`}
+                                value={formData.travelers[index]?.documentType || ''}
+                                onChange={(e) => {
+                                  const documentType = e.target.value;
+                                  const updatedTravelers = [...formData.travelers];
+                                  updatedTravelers[index].documentType = documentType;
+                                  setFormData(prev => ({ ...prev, travelers: updatedTravelers }));
+                                  
+                                  // Validar si hay un tipo de documento seleccionado
+                                  updateValidation(index, 'documentType', !!documentType);
+                                  
+                                  // Re-validar el número de documento con el nuevo tipo
+                                  if (updatedTravelers[index].documentNumber) {
+                                    const isDocValid = validateDocumentNumber(
+                                      documentType, 
+                                      updatedTravelers[index].documentNumber || ''
+                                    );
+                                    updateValidation(index, 'documentNumber', isDocValid);
+                                  }
+                                }}
+                              >
+                                <option value="">Tipo</option>
+                                <option value="RUT">RUT</option>
+                                <option value="DNI">DNI</option>
+                                <option value="PASSPORT">Pasaporte</option>
+                              </select>
+                              <div className="relative flex-1">
+                                <Input
+                                  id={`document-number-${index}`}
+                                  placeholder="00000000A"
+                                  className={`flex-1 ${validationState[index]?.documentNumber ? 'pr-10 border-green-500 focus:border-green-500 focus:ring-green-500' : ''}`}
+                                  value={formData.travelers[index]?.documentNumber || ''}
+                                  onChange={(e) => {
+                                    const documentNumber = e.target.value;
+                                    const updatedTravelers = [...formData.travelers];
+                                    updatedTravelers[index].documentNumber = documentNumber;
+                                    setFormData(prev => ({ ...prev, travelers: updatedTravelers }));
+                                    
+                                    // Validar el número de documento según el tipo
+                                    const isValid = validateDocumentNumber(
+                                      updatedTravelers[index].documentType || '', 
+                                      documentNumber
+                                    );
+                                    updateValidation(index, 'documentNumber', isValid);
+                                  }}
+                                />
+                                {validationState[index]?.documentNumber && (
+                                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-green-500">
+                                    <Check size={18} />
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor={`age-${index}`}>Edad</Label>
+                            <Input
+                              id={`age-${index}`}
+                              value={traveler.age.toString()}
+                              className={cn(traveler.ageCalculated ? "bg-green-50 text-green-900 border-green-500" : "")}
+                              readOnly
+                            />
+                          </div>
+                        </div>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <div className="space-y-2 col-span-2">
+                            <Label htmlFor={`birth-day-${index}`}>Fecha de nacimiento</Label>
+                            <div className="flex gap-2 relative">
+                              <Input
+                                id={`birth-day-${index}`}
+                                placeholder="DD"
+                                className={`w-[80px] ${validationState[index]?.birthDate ? 'border-green-500 focus:border-green-500 focus:ring-green-500' : ''}`}
+                                value={formData.travelers[index]?.birthDate?.day || ''}
+                                onChange={(e) => {
+                                  const day = e.target.value;
+                                  // Validar que solo sean números y máximo 2 dígitos
+                                  if (/^\d{0,2}$/.test(day)) {
+                                    const updatedTravelers = [...formData.travelers];
+                                    if (!updatedTravelers[index].birthDate) {
+                                      updatedTravelers[index].birthDate = { day, month: '', year: '' };
+                                    } else {
+                                      updatedTravelers[index].birthDate.day = day;
+                                    }
+                                    setFormData(prev => ({ ...prev, travelers: updatedTravelers }));
+                                    
+                                    // Validar la fecha de nacimiento completa
+                                    const isValid = validateBirthDate(updatedTravelers[index].birthDate);
+                                    updateValidation(index, 'birthDate', isValid);
+                                    
+                                    // Calcular edad si todos los campos están completos
+                                    if (day && updatedTravelers[index].birthDate?.month && updatedTravelers[index].birthDate?.year) {
+                                      calculateAge(index, updatedTravelers[index].birthDate);
+                                    }
+                                  }
+                                }}
+                              />
+                              <select 
+                                className={`flex h-10 w-[80px] rounded-md border ${validationState[index]?.birthDate ? 'border-green-500' : 'border-input'} bg-background px-3 py-2 text-sm ring-offset-background`}
+                                value={formData.travelers[index]?.birthDate?.month || ''}
+                                onChange={(e) => {
+                                  const month = e.target.value;
+                                  const updatedTravelers = [...formData.travelers];
+                                  if (!updatedTravelers[index].birthDate) {
+                                    updatedTravelers[index].birthDate = { day: '', month, year: '' };
+                                  } else {
+                                    updatedTravelers[index].birthDate.month = month;
+                                  }
+                                  setFormData(prev => ({ ...prev, travelers: updatedTravelers }));
+                                  
+                                  // Validar la fecha de nacimiento completa
+                                  const isValid = validateBirthDate(updatedTravelers[index].birthDate);
+                                  updateValidation(index, 'birthDate', isValid);
+                                  
+                                  // Calcular edad si todos los campos están completos
+                                  if (updatedTravelers[index].birthDate?.day && month && updatedTravelers[index].birthDate?.year) {
+                                    calculateAge(index, updatedTravelers[index].birthDate);
+                                  }
+                                }}
+                              >
+                                <option value="">Mes</option>
+                                <option value="01">01</option>
+                                <option value="02">02</option>
+                                <option value="03">03</option>
+                                <option value="04">04</option>
+                                <option value="05">05</option>
+                                <option value="06">06</option>
+                                <option value="07">07</option>
+                                <option value="08">08</option>
+                                <option value="09">09</option>
+                                <option value="10">10</option>
+                                <option value="11">11</option>
+                                <option value="12">12</option>
+                              </select>
+                              <div className="relative flex-1">
+                                <Input
+                                  id={`birth-year-${index}`}
+                                  placeholder="AAAA"
+                                  className={`flex-1 ${validationState[index]?.birthDate ? 'pr-10 border-green-500 focus:border-green-500 focus:ring-green-500' : ''}`}
+                                  value={formData.travelers[index]?.birthDate?.year || ''}
+                                  onChange={(e) => {
+                                    const year = e.target.value;
+                                    // Validar que solo sean números y máximo 4 dígitos
+                                    if (/^\d{0,4}$/.test(year)) {
+                                      const updatedTravelers = [...formData.travelers];
+                                      if (!updatedTravelers[index].birthDate) {
+                                        updatedTravelers[index].birthDate = { day: '', month: '', year };
+                                      } else {
+                                        updatedTravelers[index].birthDate.year = year;
+                                      }
+                                      setFormData(prev => ({ ...prev, travelers: updatedTravelers }));
+                                      
+                                      // Validar la fecha de nacimiento completa
+                                      const isValid = validateBirthDate(updatedTravelers[index].birthDate);
+                                      updateValidation(index, 'birthDate', isValid);
+                                      
+                                      // Calcular edad si todos los campos están completos
+                                      if (updatedTravelers[index].birthDate?.day && updatedTravelers[index].birthDate?.month && year) {
+                                        calculateAge(index, updatedTravelers[index].birthDate);
+                                      }
+                                    }
+                                  }}
+                                />
+                                {validationState[index]?.birthDate && (
+                                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-green-500">
+                                    <Check size={18} />
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                          
+                          {/* Campo de edad calculada automáticamente */}
+                          <div className="space-y-2">
+                            <Label htmlFor={`calculated-age-${index}`}>Edad</Label>
+                            <div className={`flex items-center h-10 px-3 rounded-md border border-input ${formData.travelers[index]?.ageCalculated ? 'bg-primary/10' : 'bg-background'} transition-colors duration-500`}>
+                              <span className="text-sm">
+                                {formData.travelers[index]?.age !== undefined ? `${formData.travelers[index].age} años` : '-'}
+                              </span>
+                            </div>
+                          </div>
+                          
+                          <div className="space-y-2">
+                            <Label htmlFor={`gender-${index}`}>Sexo / género</Label>
+                            <select 
+                              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
+                              value={formData.travelers[index]?.gender || ''}
+                              onChange={(e) => {
+                                const gender = e.target.value;
+                                const updatedTravelers = [...formData.travelers];
+                                updatedTravelers[index].gender = gender;
+                                setFormData(prev => ({ ...prev, travelers: updatedTravelers }));
+                              }}
+                            >
+                              <option value="">Seleccionar</option>
+                              <option value="Femenino">Femenino</option>
+                              <option value="Masculino">Masculino</option>
+                              <option value="No binario">No binario</option>
+                              <option value="Prefiero no decir">Prefiero no decir</option>
+                            </select>
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </CardContent>
+                </Card>
 
                 {/* Contact Information Section */}
                 <Card>
                   <CardHeader>
-                    <CardTitle>Información de Contacto</CardTitle>
+                    <CardTitle>¿A quién enviamos los datos de la asistencia?</CardTitle>
                     <CardDescription>
-                      Esta información será utilizada para todos los viajeros
+                      Esta persona recibirá toda la información y documentación del viaje
                     </CardDescription>
                   </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="phone">Teléfono de Contacto</Label>
-                      <Input
-                        id="phone"
-                        value={formData.contactInfo.phone}
-                        onChange={(e) => handleContactChange('phone', e.target.value)}
-                        placeholder="+56912345678"
-                        className="max-w-sm"
-                      />
-                      <p className="text-sm text-muted-foreground">
-                        Ingrese un número de teléfono chileno válido
-                      </p>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="email">Correo Electrónico</Label>
-                      <Input
-                        id="email"
-                        type="email"
-                        value={formData.contactInfo.email}
-                        onChange={(e) => handleContactChange('email', e.target.value)}
-                        placeholder="ejemplo@correo.com"
-                        className="max-w-sm"
-                      />
+                  <CardContent>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="email">Email (donde recibirás la documentación)</Label>
+                          <Input
+                            id="email"
+                            type="email"
+                            value={formData.contactInfo.email}
+                            onChange={(e) => handleContactChange('email', e.target.value)}
+                            placeholder="Tu dirección de email"
+                          />
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label htmlFor="email-confirm">Confirma tu email</Label>
+                          <div className="relative">
+                            <Input
+                              id="email-confirm"
+                              type="email"
+                              value={confirmEmail}
+                              onChange={handleConfirmEmailChange}
+                              placeholder="Tu dirección de email"
+                              className={!emailsMatch && confirmEmail ? 'border-red-500 pr-10' : ''}
+                            />
+                            {!emailsMatch && confirmEmail && (
+                              <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                                <svg className="h-5 w-5 text-red-500" viewBox="0 0 20 20" fill="currentColor">
+                                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                                </svg>
+                              </div>
+                            )}
+                          </div>
+                          {!emailsMatch && confirmEmail && (
+                            <p className="text-xs text-red-500 mt-1">
+                              Los correos electrónicos no coinciden
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      
+                      <div className="space-y-4">
+                        <div>
+                          <Label className="block mb-2">Tipo</Label>
+                          <select 
+                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
+                            defaultValue="Celular"
+                          >
+                            <option value="Celular">Celular</option>
+                          </select>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label htmlFor="phone">Teléfono</Label>
+                          <div className="flex gap-2">
+                            <div className="flex h-10 items-center rounded-md border border-input bg-muted px-3 text-sm text-muted-foreground">
+                              +56
+                            </div>
+                            <Input
+                              id="phone"
+                              value={formData.contactInfo.phone.startsWith('+56') 
+                                ? formData.contactInfo.phone.substring(3) 
+                                : formData.contactInfo.phone}
+                              onChange={(e) => {
+                                const phoneValue = e.target.value;
+                                // Validar que solo contenga números
+                                if (/^\d*$/.test(phoneValue)) {
+                                  handleContactChange('phone', `+56${phoneValue}`);
+                                }
+                              }}
+                              placeholder="912345678"
+                              className="flex-1"
+                            />
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Ingresa tu número de celular sin el prefijo (9 dígitos)
+                          </p>
+                        </div>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>

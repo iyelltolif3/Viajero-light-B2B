@@ -1,6 +1,6 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { Calendar, CalendarIcon } from 'lucide-react';
-import { format, addDays, isBefore, isAfter, isSameDay } from 'date-fns';
+import { format, addDays, isBefore, isAfter, isSameDay, differenceInDays } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -22,6 +22,8 @@ const DateSelector = ({ className, onDatesChange }: DateSelectorProps) => {
   });
 
   const [activeCalendar, setActiveCalendar] = useState<'departure' | 'return'>('departure');
+  const [hoveredDate, setHoveredDate] = useState<Date | null>(null);
+  const [previewDays, setPreviewDays] = useState<number | null>(null);
 
   // Minimum dates (today for departure, departure date + 1 day for return)
   const today = new Date();
@@ -63,21 +65,51 @@ const DateSelector = ({ className, onDatesChange }: DateSelectorProps) => {
     }
   }, [activeCalendar, dates, onDatesChange]);
 
-  // Function to get day class names for styling
-  const getDayClassName = useCallback((date: Date) => {
-    const isSelected = 
-      (dates.departureDate && isSameDay(date, dates.departureDate)) || 
-      (dates.returnDate && isSameDay(date, dates.returnDate));
+  // Calcular días de previsualización cuando el cursor está sobre una fecha
+  useEffect(() => {
+    if (!hoveredDate) {
+      setPreviewDays(null);
+      return;
+    }
     
-    const isInRange = dates.departureDate && 
-                      dates.returnDate && 
-                      isAfter(date, dates.departureDate) && 
-                      isBefore(date, dates.returnDate);
-    
-    if (isSelected) return "bg-primary text-primary-foreground";
-    if (isInRange) return "bg-primary/10 text-foreground";
-    return "";
-  }, [dates]);
+    // Si estamos seleccionando la fecha de salida y no hay fecha de regreso seleccionada
+    if (activeCalendar === 'departure') {
+      if (dates.returnDate) {
+        // Calcular días entre la fecha bajo el cursor y la fecha de regreso
+        const days = differenceInDays(dates.returnDate, hoveredDate);
+        if (days >= 0) {
+          setPreviewDays(days);
+        } else {
+          setPreviewDays(null);
+        }
+      } else {
+        setPreviewDays(null);
+      }
+    }
+    // Si estamos seleccionando la fecha de regreso y hay fecha de salida
+    else if (activeCalendar === 'return' && dates.departureDate) {
+      // Calcular días entre la fecha de salida y la fecha bajo el cursor
+      const days = differenceInDays(hoveredDate, dates.departureDate);
+      if (days >= 0) {
+        setPreviewDays(days);
+      } else {
+        setPreviewDays(null);
+      }
+    } else {
+      setPreviewDays(null);
+    }
+  }, [hoveredDate, dates.departureDate, dates.returnDate, activeCalendar]);
+
+  // Handler para cuando el cursor entra en una fecha
+  const handleDayMouseEnter = useCallback((date: Date) => {
+    setHoveredDate(date);
+  }, []);
+  
+  // Handler para cuando el cursor sale del calendario
+  const handleDayMouseLeave = useCallback(() => {
+    setHoveredDate(null);
+    setPreviewDays(null);
+  }, []);
 
   return (
     <div className={cn("space-y-1.5", className)}>
@@ -144,24 +176,77 @@ const DateSelector = ({ className, onDatesChange }: DateSelectorProps) => {
                       isBefore(date, minReturnDate) && 
                       !isSameDay(date, minReturnDate);
                   }}
-                  modifiersClassNames={{
-                    selected: "bg-primary text-primary-foreground",
+                  className="rounded-md border"
+                  classNames={{
+                    caption: "flex justify-center pt-1 relative items-center bg-primary/5 rounded-t-md py-2",
+                    caption_label: "text-sm font-medium text-primary"
                   }}
+                  modifiers={{
+                    departure: (date) => dates.departureDate ? isSameDay(date, dates.departureDate) : false,
+                    return: (date) => dates.returnDate ? isSameDay(date, dates.returnDate) : false,
+                    inRange: (date) => {
+                      return dates.departureDate && 
+                             dates.returnDate && 
+                             isAfter(date, dates.departureDate) && 
+                             isBefore(date, dates.returnDate);
+                    },
+                    // Estilos para previsualización de rango al pasar el cursor
+                    previewRange: (date) => {
+                      if (!hoveredDate) return false;
+
+                      // Vista previa al seleccionar fecha de salida
+                      if (activeCalendar === 'departure') {
+                        return dates.returnDate && 
+                               isAfter(date, hoveredDate) && 
+                               isBefore(date, dates.returnDate);
+                      }
+                      // Vista previa al seleccionar fecha de regreso
+                      else if (activeCalendar === 'return') {
+                        return dates.departureDate && 
+                               isAfter(date, dates.departureDate) && 
+                               isBefore(date, hoveredDate);
+                      }
+                      return false;
+                    },
+                    // Resaltar fecha bajo el cursor
+                    preview: (date) => hoveredDate ? isSameDay(date, hoveredDate) : false
+                  }}
+                  modifiersClassNames={{
+                    departure: "bg-primary text-primary-foreground font-bold",
+                    return: "bg-primary text-primary-foreground font-bold",
+                    inRange: "bg-primary/20 text-foreground hover:bg-primary/30",
+                    selected: "bg-primary text-primary-foreground",
+                    previewRange: "bg-primary/10 text-foreground",
+                    preview: "border-primary border-2 font-medium"
+                  }}
+                  onDayMouseEnter={handleDayMouseEnter}
+                  onDayMouseLeave={handleDayMouseLeave}
                   modifiersStyles={{
                     selected: { fontWeight: "bold" }
                   }}
-                  className="rounded-md border"
-                  classNames={{
-                    day: getDayClassName as unknown as string,
-                  }}
                 />
-                {dates.departureDate && dates.returnDate && (
-                  <div className="pt-4 text-sm text-muted-foreground">
-                    <p>
-                      {`${format(dates.departureDate, "MMM d")} - ${format(dates.returnDate, "MMM d, yyyy")}`}
+                {/* Información de días seleccionados o previsualizados */}
+                <div className="pt-4 text-sm border-t mt-2">
+                  <div className="flex justify-between items-center">
+                    <p className="font-medium">
+                      {dates.departureDate ? 
+                        (dates.returnDate ? 
+                          `${format(dates.departureDate, "MMM d")} - ${format(dates.returnDate, "MMM d, yyyy")}` : 
+                          (hoveredDate && activeCalendar === 'return' && isAfter(hoveredDate, dates.departureDate) ? 
+                            `${format(dates.departureDate, "MMM d")} - ${format(hoveredDate, "MMM d, yyyy")}` : 
+                            "Selecciona fecha de regreso")) : 
+                        "Selecciona fechas"}
                     </p>
+                    {/* Badge con número de días */}
+                    {(dates.departureDate && dates.returnDate) || previewDays ? (
+                      <span className="px-3 py-1 bg-primary text-primary-foreground rounded-full text-sm font-bold transition-all">
+                        {previewDays !== null ? 
+                          `${previewDays} días` : 
+                          `${differenceInDays(dates.returnDate!, dates.departureDate!)} días`}
+                      </span>
+                    ) : null}
                   </div>
-                )}
+                </div>
               </div>
             </DialogContent>
           </Dialog>

@@ -13,6 +13,7 @@ interface SettingsState {
   updateLocalSettings: (newSettings: Partial<AdminSettings>) => void;
   updateSettings: (newSettings: Partial<AdminSettings>) => void; // Alias para mantener compatibilidad
   saveSettings: () => Promise<void>;
+  saveZone: (zone: any) => Promise<void>;
   discardChanges: () => void;
 }
 
@@ -121,16 +122,16 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
         // Asegurar que todos los campos importantes existen y tienen valores válidos
         return {
           id: dbZone.id,
-          settings_id: dbZone.settings_id,
+          settingsId: dbZone.settingsId,
           name: dbZone.name || 'Sin nombre',
           description: dbZone.description || '',
-          // Mapear los campos snake_case a camelCase y asegurar valores por defecto
-          priceMultiplier: typeof dbZone.price_multiplier === 'number' ? dbZone.price_multiplier : 1,
-          riskLevel: dbZone.risk_level || 'low',
+          // Algunos campos en la base de datos están en camelCase y otros en snake_case
+          priceMultiplier: typeof dbZone.priceMultiplier === 'number' ? dbZone.priceMultiplier : 1,
+          riskLevel: 'low', // Este campo no existe en la base de datos
           countries: Array.isArray(dbZone.countries) ? dbZone.countries : [],
-          // La columna se llama isActive en la base de datos (camelCase)
-          isActive: typeof dbZone.isActive === 'boolean' ? dbZone.isActive : true,
-          // Para compatibilidad con el modelo TypeScript
+          // No existe una columna is_active en la base de datos, así que usamos un valor por defecto
+          isActive: true,
+          // Mapear campos snake_case a camelCase para TypeScript
           createdAt: dbZone.created_at,
           updatedAt: dbZone.updated_at,
           // Conservar los campos originales también para evitar pérdida de datos
@@ -278,50 +279,67 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
         // Asegurarnos de hacer log completo de los datos que enviaremos, para depuración
         console.log('Zonas en localSettings antes de guardar:', JSON.stringify(localSettings.zones, null, 2));
         
-        // IMPORTANTE: NO eliminar las zonas existentes hasta confirmar que podemos guardar las nuevas
-        // Preparar las zonas nuevas para su inserción
-        if (localSettings.id) {
-          // Crear array para guardar las zonas para Supabase
-          const safeSaveZones = [];
+        // Verificación crítica: asegurar que tenemos un ID de configuración válido
+        if (!localSettings.id) {
+          console.error('Error: No se puede guardar zonas sin un ID de configuración válido');
+          toast({
+            title: "Error",
+            description: "No se pueden guardar zonas sin configuración previa. Guarde primero la configuración general.",
+            variant: "destructive",
+          });
+          throw new Error('No settings ID available for saving zones');
+        }
+        
+        // Crear array para guardar las zonas para Supabase
+        const safeSaveZones = [];
+        
+        // Verificar cada zona y asegurarnos que tenga el formato correcto
+        for (const zone of localSettings.zones) {
+          // Generar ID único para zonas nuevas
+          const zoneId = zone.id || crypto.randomUUID();
           
-          // Verificar cada zona y asegurarnos que tenga el formato correcto
-          for (const zone of localSettings.zones) {
-            // Convertir explícitamente todos los campos necesarios
-            const preparedZone = {
-              id: zone.id,
-              settings_id: localSettings.id,
-              name: zone.name || 'Sin nombre',
-              description: zone.description || '',
-              // Usar los campos que sabemos que existen en la base de datos
-              price_multiplier: typeof zone.priceMultiplier === 'number' ? zone.priceMultiplier : 1,
-              countries: Array.isArray(zone.countries) ? zone.countries : [],
-              risk_level: zone.riskLevel || 'low',
-              // Camel case tal como está en la base de datos
-              isActive: typeof zone.isActive === 'boolean' ? zone.isActive : true,
-              // Usar createdAt si existe, de lo contrario usar la fecha actual
-              created_at: zone.created_at || zone.createdAt || new Date().toISOString(),
-              updated_at: new Date().toISOString()
-            };
-            
-            // Validar campos clave para asegurar que son válidos
-            if (!preparedZone.id || !preparedZone.settings_id || !preparedZone.name) {
-              console.error('Zona no válida, faltan campos obligatorios:', preparedZone);
-              continue; // Saltar esta zona
-            }
-
-            // Agregar a la lista de zonas a guardar
-            safeSaveZones.push(preparedZone);
+          // Convertir explícitamente todos los campos necesarios
+          const preparedZone = {
+            id: zoneId,
+            settings_id: localSettings.id,
+            name: zone.name || 'Sin nombre',
+            description: zone.description || '',
+            // Usar los campos que sabemos que existen en la base de datos
+            price_multiplier: typeof zone.priceMultiplier === 'number' ? zone.priceMultiplier : 1,
+            countries: Array.isArray(zone.countries) ? zone.countries : [],
+            risk_level: zone.riskLevel || 'low',
+            // Camel case tal como está en la base de datos
+            isActive: typeof zone.isActive === 'boolean' ? zone.isActive : true,
+            // Usar created_at si existe, de lo contrario usar la fecha actual
+            created_at: zone.created_at || new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          };
+          
+          // Añadir la zona preparada a la lista de zonas a guardar
+          safeSaveZones.push(preparedZone);
+          
+          // Si esta zona no tenía ID, actualizamos la zona original con el nuevo ID
+          if (!zone.id) {
+            zone.id = zoneId;
           }
-          
-          // Imprimir lo que vamos a guardar para depuración
-          console.log('Zonas preparadas para guardar:', JSON.stringify(safeSaveZones, null, 2));
-          
-          // Intentar insertar las nuevas zonas primero SIN borrar las existentes
+        }
+        
+        // Imprimir lo que vamos a guardar para depuración
+        console.log('Zonas preparadas para guardar:', JSON.stringify(safeSaveZones, null, 2));
+        
+        if (safeSaveZones.length === 0) {
+          console.warn('No hay zonas válidas para guardar');
+          toast({
+            title: "Advertencia",
+            description: "No se encontraron zonas válidas para guardar",
+            variant: "default",
+          });
+        } else {
           try {
-            // Insertar las nuevas zonas
+            // Insertar o actualizar zonas usando upsert
             const { data: insertedData, error: insertError } = await supabase
               .from('zones')
-              .upsert(safeSaveZones, { onConflict: 'id' }) // Usar upsert en lugar de insert
+              .upsert(safeSaveZones, { onConflict: 'id' })
               .select();
               
             if (insertError) {
@@ -332,30 +350,35 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
             console.log('Zonas insertadas exitosamente:', insertedData);
             zonesSaved = true;
             
-            // Si todo va bien, ahora podemos eliminar las zonas que ya no existen
-            // (aquellas que no están en localSettings pero sí en la base de datos)
+            // Obtener IDs de zonas guardadas
+            const savedZoneIds = safeSaveZones.map(z => z.id);
             
-            // Obtener IDs de zonas actualmente en localSettings
-            const currentZoneIds = localSettings.zones.map(z => z.id);
-            
-            // Eliminar solo las zonas que ya no existen en localSettings
-            if (currentZoneIds.length > 0) {
+            // Eliminar zonas que ya no existen en la configuración local
+            if (savedZoneIds.length > 0) {
               const { error: cleanupError } = await supabase
                 .from('zones')
                 .delete()
                 .eq('settings_id', localSettings.id)
-                .not('id', 'in', `(${currentZoneIds.map(id => `'${id}'`).join(',')})`);
+                .not('id', 'in', `(${savedZoneIds.map(id => `'${id}'`).join(',')})`);
                 
               if (cleanupError) {
                 console.error('Error al limpiar zonas antiguas:', cleanupError);
-                // No lanzamos error aquí, ya que las zonas nuevas se guardaron correctamente
+              } else {
+                console.log('Limpieza de zonas antiguas completada');
               }
             }
           } catch (err) {
             console.error('Error al guardar zonas:', err);
+            toast({
+              title: "Error",
+              description: "Hubo un problema al guardar las zonas",
+              variant: "destructive",
+            });
             throw err;
           }
         }
+      } else {
+        console.log('No hay zonas para guardar');  
       }
       
       // PASO 3: Refrescar los datos para asegurar que están actualizados
@@ -393,6 +416,83 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     }
   },
 
+  saveZone: async (zone) => {
+    try {
+      set({ isLoading: true, error: null });
+      const { localSettings } = get();
+      
+      if (!localSettings || !localSettings.id) {
+        throw new Error("No hay configuración de sistema disponible para guardar la zona");
+      }
+      
+      // Asegurar que la zona tenga el settings_id correcto
+      if (!zone.settings_id) {
+        zone.settings_id = localSettings.id;
+      }
+
+      // Preparar la zona para guardar con los campos correctos para la base de datos
+      const preparedZone = {
+        id: zone.id || crypto.randomUUID(),
+        settings_id: zone.settings_id || zone.settingsId,
+        name: zone.name || 'Sin nombre',
+        description: zone.description || '',
+        priceMultiplier: typeof zone.priceMultiplier === 'number' ? zone.priceMultiplier : 1,
+        // riskLevel no existe en la base de datos, lo omitimos
+        countries: Array.isArray(zone.countries) ? zone.countries : [],
+        // No incluimos is_active porque no existe en la tabla zones
+        created_at: zone.created_at || zone.createdAt || new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+      
+      console.log('Guardando zona individual:', JSON.stringify(preparedZone, null, 2));
+      
+      // Guardar la zona en la base de datos
+      const { data: savedZone, error } = await supabase
+        .from('zones')
+        .upsert(preparedZone)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      
+      console.log('Zona guardada exitosamente:', savedZone);
+      
+      // Actualizar la zona en el estado local
+      if (localSettings.zones) {
+        const updatedZones = localSettings.zones.map(z => 
+          z.id === savedZone.id ? { ...z, ...savedZone } : z
+        );
+        
+        // Si la zona no existía, añadirla
+        if (!updatedZones.some(z => z.id === savedZone.id)) {
+          updatedZones.push(savedZone);
+        }
+        
+        // Actualizar el estado
+        set({
+          localSettings: { ...localSettings, zones: updatedZones },
+          settings: { ...localSettings, zones: updatedZones },
+          isLoading: false,
+        });
+      }
+      
+      toast({
+        title: "Zona guardada",
+        description: "La zona ha sido guardada exitosamente",
+      });
+      
+      return savedZone;
+    } catch (error: any) {
+      console.error('Error al guardar la zona:', error);
+      set({ isLoading: false, error: error.message });
+      toast({
+        title: "Error",
+        description: "No se pudo guardar la zona: " + error.message,
+        variant: "destructive",
+      });
+    }
+  },
+  
   discardChanges: () => {
     const { settings } = get();
     set({
