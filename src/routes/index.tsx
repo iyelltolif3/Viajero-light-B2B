@@ -1,6 +1,7 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { PageLoadingScreen } from '@/components/ui/loading-screen';
 
 // Layouts
 import { AdminLayout } from '@/layouts/AdminLayout';
@@ -34,17 +35,8 @@ function PrivateRoute({ children }: { children: React.ReactNode }) {
 
 // Contenedor de carga
 function LoadingPage() {
-  return (
-    <div className="min-h-screen flex items-center justify-center">
-      <div className="flex flex-col items-center">
-        <div className="relative">
-          <div className="h-16 w-16 rounded-full border-4 border-primary-25" /> 
-          <div className="absolute top-0 left-0 h-16 w-16 rounded-full border-t-4 border-primary animate-spin" />
-        </div>
-        <p className="mt-4 text-muted-foreground">Cargando...</p>
-      </div>
-    </div>
-  );
+  // Utilizamos el componente LoadingScreen que ahora tiene la animación de maleta
+  return <PageLoadingScreen message="Preparando tu viaje..." />;
 }
 
 export default function AppRoutes() {

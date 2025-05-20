@@ -10,10 +10,11 @@ import { Footer } from '@/components/Footer';
 import AppRoutes from '@/routes';
 import { useSettingsStore } from '@/store/settingsStore';
 import { usePlansStore } from '@/store/plansStore';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLocation } from 'react-router-dom';
 import { AdminLayout } from '@/components/layouts/AdminLayout';
+import { LoadingScreen } from '@/components/ui/loading-screen';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -25,10 +26,11 @@ const queryClient = new QueryClient({
 });
 
 function AppContent() {
-  const { fetchSettings } = useSettingsStore();
-  const { fetchPlans } = usePlansStore();
-  const { user, isAdmin } = useAuth();
+  const { fetchSettings, isLoading: settingsLoading } = useSettingsStore();
+  const { fetchPlans, is_loading: plansLoading } = usePlansStore();
+  const { user, isAdmin, loading: authLoading } = useAuth();
   const location = useLocation();
+  const [initialLoading, setInitialLoading] = useState(true);
 
   useEffect(() => {
     // Cargar los datos iniciales
@@ -40,13 +42,21 @@ function AppContent() {
         ]);
       } catch (error) {
         console.error('Error loading initial data:', error);
+      } finally {
+        // Retraso para asegurar que el splash sea visible por al menos 2 segundos
+        setTimeout(() => {
+          setInitialLoading(false);
+        }, 2000);
       }
     };
 
     loadInitialData();
   }, [fetchSettings, fetchPlans]);
 
-  // Todas las rutas, tanto de admin como de cliente, usan sus propios layouts definidos en routes/index.tsx
+  // Mostrar el splash screen durante la carga inicial
+  if (initialLoading || authLoading) {
+    return <LoadingScreen message="Preparando tu viaje..." />;
+  }
 
   // Todas las rutas, tanto de admin como de cliente, usan sus propios layouts
   // Verificar si estamos en la ruta de admin

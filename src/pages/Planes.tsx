@@ -70,7 +70,12 @@ export default function Planes() {
                         adventureSports: plan.coverageDetails.adventureSports,
                       }
                     },
-                    quotationData: state?.quotationData
+                    quotationData: state?.quotationData ? {
+                      ...state.quotationData,
+                      startDate: state.quotationData.startDate,
+                      endDate: state.quotationData.endDate,
+                      destination: state.quotationData.destination
+                    } : undefined
                   } 
                 })}
               >

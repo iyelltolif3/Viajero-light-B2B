@@ -1,14 +1,26 @@
+import { useEffect, useRef, useState } from 'react';
 import HeroSection from '@/components/HeroSection';
 import DiscountSection from '@/components/DiscountSection';
 
 const Index = () => {
+  const contentRef = useRef<HTMLDivElement>(null);
+  const heroRef = useRef<HTMLDivElement>(null);
+  
+  // Renderizamos directamente todo el contenido sin animaciones basadas en scroll
   return (
-    <div className="min-h-screen flex flex-col bg-background">
-      {/* Hero Section */}
-      <HeroSection />
+    <div className="flex flex-col w-full">
+      {/* Referencia para el Hero Section */}
+      <div ref={heroRef}>
+        <HeroSection />
+      </div>
 
-      {/* Discount Section */}
-      <DiscountSection />
+      {/* Contenido que aparece con scroll */}
+      <div ref={contentRef} className="w-full">
+        {/* Discount Section */}
+        <div className="animate-section">
+          <DiscountSection />
+        </div>
+      </div>
     </div>
   );
 };

@@ -5,8 +5,8 @@ export interface Destination {
   id: string;
   name: string;
   region: string;
-  priceMultiplier: number;
-  riskLevel: 'low' | 'medium' | 'high';
+  price_multiplier: number;
+  risk_level: 'low' | 'medium' | 'high';
 }
 
 /**

@@ -55,8 +55,8 @@ interface TravellerBirthDate {
 interface CheckoutFormData {
   destination: Destination | null;
   dates: {
-    departureDate: Date | null;
-    returnDate: Date | null;
+    departure_date: Date | null;
+    return_date: Date | null;
   };
   travelers: {
     age: number;
@@ -68,7 +68,7 @@ interface CheckoutFormData {
     documentNumber?: string;
     ageCalculated?: boolean;
   }[];
-  contactInfo: {
+  contact_info: {
     phone: string;
     email: string;
   };
@@ -198,11 +198,11 @@ export default function Checkout() {
   const [formData, setFormData] = useState<CheckoutFormData>({
     destination: null,
     dates: {
-      departureDate: null,
-      returnDate: null,
+      departure_date: null,
+      return_date: null,
     },
     travelers: [],
-    contactInfo: {
+    contact_info: {
       phone: "",
       email: "",
     },
@@ -261,6 +261,17 @@ export default function Checkout() {
     setFormData(prev => ({ ...prev, travelers: updatedTravelers }));
   };
 
+  // Función para manejar los cambios en los datos de contacto
+  const handleContactChange = (field: string, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      contact_info: {
+        ...prev.contact_info,
+        [field]: value
+      }
+    }));
+  };
+
   const [confirmEmail, setConfirmEmail] = useState(user?.email || "");
   const [emailsMatch, setEmailsMatch] = useState(true);
 
@@ -268,11 +279,11 @@ export default function Checkout() {
     origin: 'Chile',
     destination: null,
     dates: {
-      departureDate: undefined,
-      returnDate: undefined,
+      departure_date: undefined,
+      return_date: undefined,
     },
     travelers: [{ age: 18 }],
-    contactInfo: {
+    contact_info: {
       phone: "+56",
       email: user?.email || ""
     }
@@ -280,7 +291,6 @@ export default function Checkout() {
 
   const [totalPrice, setTotalPrice] = useState(selectedPlan?.price || 0);
   const [quote, setQuote] = useState<QuoteResult | null>(null);
-
   useEffect(() => {
     if (quote) {
       // Preparar travelers con la estructura correcta para el formulario
@@ -299,11 +309,11 @@ export default function Checkout() {
       setFormData({
         destination: quote.destination || null,
         dates: {
-          departureDate: quote.departureDate || null,
-          returnDate: quote.returnDate || null,
+          departure_date: quote.departureDate || null,
+          return_date: quote.returnDate || null,
         },
         travelers: initializedTravelers.length > 0 ? initializedTravelers : [],
-        contactInfo: {
+        contact_info: {
           phone: user?.phone || "+56",
           email: user?.email || "",
         },
@@ -315,11 +325,26 @@ export default function Checkout() {
 
   useEffect(() => {
     if (quotationData) {
+      console.log('Inicializando formulario con datos de cotización:', quotationData);
+      
+      // Garantizar que destination sea un objeto válido con las propiedades necesarias
+      const validDestination = quotationData.destination && 
+        typeof quotationData.destination === 'object' && 
+        'name' in quotationData.destination ? 
+        quotationData.destination : null;
+      
+      // Convertir fechas string a objetos Date
+      const departureDate = quotationData.startDate ? new Date(quotationData.startDate) : null;
+      const returnDate = quotationData.endDate ? new Date(quotationData.endDate) : null;
+      
+      console.log('Destino recuperado:', validDestination);
+      console.log('Fechas recuperadas:', departureDate, returnDate);
+      
       setFormData({
-        destination: quotationData.destination || null,
+        destination: validDestination,
         dates: {
-          departureDate: quotationData.startDate ? new Date(quotationData.startDate) : null,
-          returnDate: quotationData.endDate ? new Date(quotationData.endDate) : null
+          departure_date: departureDate,
+          return_date: returnDate
         },
         travelers: quotationData.travelers.map(t => ({
           age: parseInt(t.age),
@@ -331,7 +356,7 @@ export default function Checkout() {
           documentNumber: '',
           ageCalculated: false
         })),
-        contactInfo: {
+        contact_info: {
           phone: "+56",
           email: user?.email || ""
         }
@@ -340,40 +365,78 @@ export default function Checkout() {
       // Inicializar quoteData con los datos de la cotización
       setQuoteData({
         origin: 'Chile',
-        destination: quotationData.destination || null,
+        destination: validDestination,
         dates: {
-          departureDate: quotationData.startDate ? new Date(quotationData.startDate) : undefined,
-          returnDate: quotationData.endDate ? new Date(quotationData.endDate) : undefined,
+          departure_date: departureDate,
+          return_date: returnDate,
         },
         travelers: quotationData.travelers.map(t => ({
-          age: parseInt(t.age),
-          birthDate: { day: '', month: '', year: '' },
-          gender: '',
-          firstName: '',
-          lastName: '',
-          documentType: '',
-          documentNumber: '',
-          ageCalculated: false
+          age: parseInt(t.age)
         })),
-        contactInfo: {
+        contact_info: {
           phone: "+56",
           email: user?.email || ""
         }
       });
+      
+      // Asegurarse de que el precio se calcule una vez que los datos estén inicializados
+      setTimeout(() => {
+        if (validDestination && departureDate && returnDate) {
+          recalculatePrice();
+        }
+      }, 500);
     }
-  }, [quotationData]);
+  }, [quotationData, user]);
 
+  // Sólo recalcular cuando los campos críticos cambien, evitando recálculos innecesarios
   useEffect(() => {
-    recalculatePrice();
-  }, [formData]);
+    if (formData.destination && formData.dates.departure_date && formData.dates.return_date && formData.travelers.length > 0) {
+      console.log('Datos cambiados, recalculando precio...');
+      recalculatePrice();
+    }
+  }, [formData.destination, formData.dates.departure_date, formData.dates.return_date, formData.travelers.length]);
 
+  // Función auxiliar para comprobar si un valor es NaN
+  const isValidNumber = (value: any): boolean => {
+    return typeof value === 'number' && !isNaN(value);
+  };
+  
   const recalculatePrice = () => {
-    if (!formData.destination || !formData.dates.departureDate || !formData.dates.returnDate) {
+    if (!formData.destination || !formData.dates.departure_date || !formData.dates.return_date) {
+      console.warn('Datos insuficientes para calcular precio:', { 
+        destination: formData.destination, 
+        departure_date: formData.dates.departure_date, 
+        return_date: formData.dates.return_date 
+      });
       return;
     }
 
     try {
-      const duration = differenceInDays(formData.dates.returnDate, formData.dates.departureDate);
+      // Asegurarse de que los datos son válidos antes de calcular
+      if (!formData.destination.region) {
+        console.error('La región del destino es inválida:', formData.destination);
+        toast.error('Error en datos de destino', {
+          description: 'Por favor, selecciona nuevamente el destino.'
+        });
+        return;
+      }
+
+      const duration = differenceInDays(formData.dates.return_date, formData.dates.departure_date);
+      
+      if (duration <= 0) {
+        toast.error('Fechas inválidas', {
+          description: 'La fecha de regreso debe ser posterior a la fecha de salida.'
+        });
+        return;
+      }
+      
+      console.log('Calculando precio con:', {
+        zone: formData.destination.region,
+        duration,
+        travelers: formData.travelers,
+        category: selectedPlan?.name || 'basic'
+      });
+      
       const quote = calculateQuote({
         zone: formData.destination.region,
         duration,
@@ -381,7 +444,22 @@ export default function Checkout() {
         category: selectedPlan?.name || 'basic'
       });
 
+      console.log('Cotización calculada:', quote);
+      
+      // Verificar que no haya valores NaN antes de actualizar el state
+      if (!isValidNumber(quote.total)) {
+        console.error('Error: El total de la cotización es NaN');
+        toast.error('Error en el cálculo', {
+          description: 'No se pudo calcular el precio correctamente.'
+        });
+        return;
+      }
+      
       setQuote(quote);
+      
+      toast.success('Precio recalculado', {
+        description: 'La cotización ha sido actualizada correctamente.'
+      });
     } catch (error) {
       console.error('Error calculating price:', error);
       toast.error('Error al calcular el precio', {
@@ -390,52 +468,18 @@ export default function Checkout() {
     }
   };
 
-  if (!selectedPlan) {
-    return (
-      <div className="container mx-auto py-12 px-4">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold mb-4">No hay plan seleccionado</h1>
-          <p className="text-muted-foreground mb-6">
-            Por favor, selecciona un plan de asistencia para continuar
-          </p>
-          <Button onClick={() => navigate('/planes')}>
-            Ver Planes Disponibles
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
-  const handleContactChange = (field: keyof CheckoutFormData['contactInfo'], value: string) => {
-    setFormData(prev => ({
-      ...prev,
-      contactInfo: {
-        ...prev.contactInfo,
-        [field]: value
-      }
-    }));
-
-    setQuoteData(prev => ({
-      ...prev,
-      contactInfo: {
-        ...prev.contactInfo!,
-        [field]: value
-      }
-    }));
-  };
-
   const validateContactInfo = () => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     const phoneRegex = /^\+56\d{9}$/;
 
-    if (!emailRegex.test(formData.contactInfo.email)) {
+    if (!emailRegex.test(formData.contact_info.email)) {
       toast.error('Email inválido', {
         description: 'Por favor ingresa un email válido'
       });
       return false;
     }
 
-    if (formData.contactInfo.email !== confirmEmail) {
+    if (formData.contact_info.email !== confirmEmail) {
       toast.error('Los emails no coinciden', {
         description: 'Por favor verifica que los emails ingresados sean iguales'
       });
@@ -443,7 +487,7 @@ export default function Checkout() {
       return false;
     }
 
-    if (!phoneRegex.test(formData.contactInfo.phone)) {
+    if (!phoneRegex.test(formData.contact_info.phone)) {
       toast.error('Teléfono inválido', {
         description: 'Por favor ingresa un número de celular válido (9 dígitos)'
       });
@@ -458,7 +502,7 @@ export default function Checkout() {
   const handleConfirmEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const confirmValue = e.target.value;
     setConfirmEmail(confirmValue);
-    setEmailsMatch(formData.contactInfo.email === confirmValue);
+    setEmailsMatch(formData.contact_info.email === confirmValue);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -479,15 +523,15 @@ export default function Checkout() {
       const assistance: Omit<Assistance, 'id'> = {
         planName: selectedPlan.name,
         status: 'future',
-        startDate: formData.dates.departureDate?.toISOString() || '',
-        endDate: formData.dates.returnDate?.toISOString() || '',
+        startDate: formData.dates.departure_date?.toISOString() || '',
+        endDate: formData.dates.return_date?.toISOString() || '',
         travelers: formData.travelers.map(t => ({
-          name: '',
+          name: t.firstName && t.lastName ? `${t.firstName} ${t.lastName}` : '',
           age: t.age,
-          passport: '',
+          passport: t.documentType === 'PASSPORT' ? t.documentNumber || '' : '',
           nationality: ''
         })),
-        contactInfo: formData.contactInfo,
+        contact_info: formData.contact_info,
         totalPrice: quote.total,
         planDetails: {
           coverageDetails: selectedPlan.coverageDetails,
@@ -528,6 +572,21 @@ export default function Checkout() {
       });
     }
   };
+  if (!selectedPlan) {
+    return (
+      <div className="container mx-auto py-12 px-4">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-4">No hay plan seleccionado</h1>
+          <p className="text-muted-foreground mb-6">
+            Por favor, selecciona un plan de asistencia para continuar
+          </p>
+          <Button onClick={() => navigate('/planes')}>
+            Ver Planes Disponibles
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto py-8 px-4">
@@ -552,7 +611,7 @@ export default function Checkout() {
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-6">
-                {/* Tarjeta con resumen de información del viaje */}
+                {/* Tarjeta con resumen de informaciÃ³n del viaje */}
                 <Card>
                   <CardHeader className="pb-4">
                     <CardTitle className="text-lg">Detalles del Viaje</CardTitle>
@@ -569,8 +628,8 @@ export default function Checkout() {
                       <div className="space-y-2">
                         <h4 className="text-sm font-medium">Fecha de salida</h4>
                         <p>
-                          {quoteData.dates.departureDate
-                            ? new Date(quoteData.dates.departureDate).toLocaleDateString('es-ES', {
+                          {quoteData.dates.departure_date
+                            ? new Date(quoteData.dates.departure_date).toLocaleDateString('es-ES', {
                                 day: '2-digit',
                                 month: '2-digit',
                                 year: 'numeric'
@@ -581,8 +640,8 @@ export default function Checkout() {
                       <div className="space-y-2">
                         <h4 className="text-sm font-medium">Fecha de regreso</h4>
                         <p>
-                          {quoteData.dates.returnDate
-                            ? new Date(quoteData.dates.returnDate).toLocaleDateString('es-ES', {
+                          {quoteData.dates.return_date
+                            ? new Date(quoteData.dates.return_date).toLocaleDateString('es-ES', {
                                 day: '2-digit',
                                 month: '2-digit',
                                 year: 'numeric'
@@ -600,7 +659,14 @@ export default function Checkout() {
                         size="sm"
                         onClick={() => {
                           // Mostrar la sección de recotización
-                          document.getElementById('recotizar-section')?.classList.toggle('hidden');
+                          const recotizarSection = document.getElementById('recotizar-section');
+                          if (recotizarSection) {
+                            if (recotizarSection.style.display === 'none' || !recotizarSection.style.display) {
+                              recotizarSection.style.display = 'block';
+                            } else {
+                              recotizarSection.style.display = 'none';
+                            }
+                          }
                         }}
                         type="button"
                       >
@@ -608,118 +674,209 @@ export default function Checkout() {
                         Recotizar
                       </Button>
                     </div>
-                  </CardContent>
-                </Card>
-                
-                {/* Sección de Recotización (oculta por defecto) */}
-                <Card className="border-dashed hidden" id="recotizar-section">
-                  <CardHeader className="pb-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <CardTitle className="text-lg">Recotizar</CardTitle>
-                        <CardDescription>
-                          Modifica los detalles del viaje para actualizar el precio
-                        </CardDescription>
+
+                    {/* Sección para recotizar (inicialmente oculta) */}
+                    <div id="recotizar-section" className="space-y-4 border-t pt-4 mt-4" style={{ display: 'none' }}>
+                      <div className="space-y-2">
+                        <Label>Destino</Label>
+                        <DestinationSelector
+                          value={formData.destination}
+                          onChange={(destination) => {
+                            console.log('Nuevo destino seleccionado:', destination);
+                            // Actualizar ambos estados con el nuevo destino
+                            setFormData(prev => ({
+                              ...prev,
+                              destination
+                            }));
+                            
+                            setQuoteData(prev => ({
+                              ...prev,
+                              destination
+                            }));
+                            
+                            // Forzar recálculo de precio inmediatamente
+                            setTimeout(() => {
+                              if (destination) {
+                                recalculatePrice();
+                              }
+                            }, 100);
+                          }}
+                        />
                       </div>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label>Fecha de salida</Label>
+                          <DateSelector
+                            date={formData.dates.departure_date}
+                            onChange={(date) => {
+                              console.log('Nueva fecha de salida seleccionada:', date);
+                              // Actualizar ambos estados con la nueva fecha
+                              setFormData(prev => ({
+                                ...prev,
+                                dates: {
+                                  ...prev.dates,
+                                  departure_date: date
+                                }
+                              }));
+                              
+                              setQuoteData(prev => ({
+                                ...prev,
+                                dates: {
+                                  ...prev.dates,
+                                  departure_date: date
+                                }
+                              }));
+                              
+                              // Forzar recálculo después de un pequeño delay
+                              setTimeout(() => {
+                                if (date && formData.dates.return_date) {
+                                  recalculatePrice();
+                                }
+                              }, 100);
+                            }}
+                          />
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label>Fecha de regreso</Label>
+                          <DateSelector
+                            date={formData.dates.return_date}
+                            onChange={(date) => {
+                              console.log('Nueva fecha de regreso seleccionada:', date);
+                              // Actualizar ambos estados con la nueva fecha
+                              setFormData(prev => ({
+                                ...prev,
+                                dates: {
+                                  ...prev.dates,
+                                  return_date: date
+                                }
+                              }));
+                              
+                              setQuoteData(prev => ({
+                                ...prev,
+                                dates: {
+                                  ...prev.dates,
+                                  return_date: date
+                                }
+                              }));
+                              
+                              // Forzar recálculo después de un pequeño delay
+                              setTimeout(() => {
+                                if (date && formData.dates.departure_date) {
+                                  recalculatePrice();
+                                }
+                              }, 100);
+                            }}
+                          />
+                        </div>
+                      <div className="space-y-2">
+                        <Label>Viajeros</Label>
+                        <TravelerSelector
+                          travelers={formData.travelers.map(t => ({ age: t.age }))}
+                          onChange={(travelers) => {
+                            // Actualizar formData manteniendo los datos adicionales de los viajeros existentes
+                            // y agregando nuevos si es necesario
+                            const updatedTravelers = travelers.map((t, idx) => {
+                              if (idx < formData.travelers.length) {
+                                return {
+                                  ...formData.travelers[idx],
+                                  age: t.age
+                                };
+                              } else {
+                                return {
+                                  age: t.age,
+                                  birthDate: { day: '', month: '', year: '' },
+                                  gender: '',
+                                  firstName: '',
+                                  lastName: '',
+                                  documentType: '',
+                                  documentNumber: '',
+                                  ageCalculated: false
+                                };
+                              }
+                            });
+                            
+                            setFormData(prev => ({
+                              ...prev,
+                              travelers: updatedTravelers
+                            }));
+                            
+                            setQuoteData(prev => ({
+                              ...prev,
+                              travelers: travelers
+                            }));
+                            
+                            setTimeout(recalculatePrice, 0);
+                          }}
+                        />
+                      </div>
+                      </div>
+                      
                       <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={recalculatePrice}
+                        variant="default"
+                        className="w-full"
+                        onClick={() => {
+                          const recotizarSection = document.getElementById('recotizar-section');
+                          if (recotizarSection) {
+                            // Usamos display en vez de hidden para mejor compatibilidad
+                            recotizarSection.style.display = 'none';
+                            // Asegurarse de recalcular el precio
+                            recalculatePrice();
+                            toast.success('Cotización actualizada', {
+                              description: 'Los precios han sido recalculados con los nuevos datos'
+                            });
+                          }
+                        }}
                         type="button"
                       >
-                        <Calculator className="h-4 w-4 mr-2" />
-                        Recalcular
+                        Actualizar cotización
                       </Button>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div>
-                      <Label>Destino</Label>
-                      <DestinationSelector
-                        label=""
-                        value={quoteData.destination}
-                        onSelect={(destination) => {
-                          setQuoteData(prev => ({ ...prev, destination }));
-                        }}
-                        className="w-full"
-                      />
-                    </div>
-                    <div>
-                      <Label>Fechas</Label>
-                      <DateSelector
-                        onDatesChange={(dates) => {
-                          setQuoteData(prev => ({ ...prev, dates }));
-                          setFormData(prev => ({
-                            ...prev,
-                            dates: {
-                              departureDate: dates.departureDate,
-                              returnDate: dates.returnDate
-                            }
-                          }));
-                        }}
-                        className="w-full"
-                      />
-                    </div>
-                    <div>
-                      <Label>Viajeros</Label>
-                      <TravelerSelector
-                        onTravelersChange={(travelers) => {
-                          setQuoteData(prev => ({ ...prev, travelers }));
-                          setFormData(prev => ({
-                            ...prev,
-                            travelers: travelers.map(t => ({ age: t.age }))
-                          }));
-                        }}
-                        className="w-full"
-                      />
                     </div>
                   </CardContent>
                 </Card>
-
-                {/* Información de viajeros - ahora con más campos */}
+                {/* Sección de datos de viajeros */}
                 <Card>
                   <CardHeader>
-                    <CardTitle>Datos de los Pasajeros</CardTitle>
+                    <CardTitle>Datos de los viajeros</CardTitle>
                     <CardDescription>
-                      Ingresa los datos de cada uno de los pasajeros
+                      Completa la información de todos los viajeros
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-6">
                     {formData.travelers.map((traveler, index) => (
-                      <div key={index} className="relative space-y-4 p-4 border rounded-lg">
-                        <div className="flex items-center justify-between">
-                          <h3 className="font-medium">Pasajero {index + 1}</h3>
+                      <div key={index} className="p-4 border rounded-lg">
+                        <div className="flex justify-between mb-4">
+                          <h3 className="font-medium">Viajero {index + 1}</h3>
                           {formData.travelers.length > 1 && (
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="h-8 w-8 rounded-full p-0"
                               onClick={() => handleRemoveTraveler(index)}
+                              type="button"
                             >
-                              ×
+                              Eliminar
                             </Button>
                           )}
                         </div>
                         
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                           <div className="space-y-2">
-                            <Label htmlFor={`name-${index}`}>Nombre/s completo/s</Label>
+                            <Label htmlFor={`firstName-${index}`}>Nombre</Label>
                             <div className="relative">
                               <Input
-                                id={`name-${index}`}
-                                placeholder="Tu/s nombre/s completo/s"
-                                value={formData.travelers[index]?.firstName || ''}
-                                className={`${validationState[index]?.firstName ? 'pr-10 border-green-500 focus:border-green-500 focus:ring-green-500' : ''}`}
+                                id={`firstName-${index}`}
+                                value={traveler.firstName || ''}
                                 onChange={(e) => {
                                   const firstName = e.target.value;
                                   const updatedTravelers = [...formData.travelers];
                                   updatedTravelers[index].firstName = firstName;
                                   setFormData(prev => ({ ...prev, travelers: updatedTravelers }));
                                   
-                                  // Validar el nombre
                                   const isValid = validateName(firstName);
                                   updateValidation(index, 'firstName', isValid);
                                 }}
+                                placeholder="Nombre"
                               />
                               {validationState[index]?.firstName && (
                                 <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-green-500">
@@ -728,24 +885,23 @@ export default function Checkout() {
                               )}
                             </div>
                           </div>
+                          
                           <div className="space-y-2">
-                            <Label htmlFor={`surname-${index}`}>Apellido/s</Label>
+                            <Label htmlFor={`lastName-${index}`}>Apellido</Label>
                             <div className="relative">
                               <Input
-                                id={`surname-${index}`}
-                                placeholder="Tu/s apellido/s completo/s"
-                                value={formData.travelers[index]?.lastName || ''}
-                                className={`${validationState[index]?.lastName ? 'pr-10 border-green-500 focus:border-green-500 focus:ring-green-500' : ''}`}
+                                id={`lastName-${index}`}
+                                value={traveler.lastName || ''}
                                 onChange={(e) => {
                                   const lastName = e.target.value;
                                   const updatedTravelers = [...formData.travelers];
                                   updatedTravelers[index].lastName = lastName;
                                   setFormData(prev => ({ ...prev, travelers: updatedTravelers }));
                                   
-                                  // Validar el apellido
                                   const isValid = validateName(lastName);
                                   updateValidation(index, 'lastName', isValid);
                                 }}
+                                placeholder="Apellido"
                               />
                               {validationState[index]?.lastName && (
                                 <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-green-500">
@@ -754,192 +910,159 @@ export default function Checkout() {
                               )}
                             </div>
                           </div>
+                          
+                          <div className="space-y-2">
+                            <Label htmlFor={`documentType-${index}`}>Tipo de documento</Label>
+                            <select 
+                              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
+                              value={traveler.documentType || ''}
+                              onChange={(e) => {
+                                const documentType = e.target.value;
+                                const updatedTravelers = [...formData.travelers];
+                                updatedTravelers[index].documentType = documentType;
+                                setFormData(prev => ({ ...prev, travelers: updatedTravelers }));
+                                
+                                updateValidation(index, 'documentType', !!documentType);
+                                
+                                // Validar nÃºmero de documento con el nuevo tipo
+                                if (traveler.documentNumber) {
+                                  const isValid = validateDocumentNumber(documentType, traveler.documentNumber);
+                                  updateValidation(index, 'documentNumber', isValid);
+                                }
+                              }}
+                            >
+                              <option value="">Seleccionar</option>
+                              <option value="PASSPORT">Pasaporte</option>
+                              <option value="DNI">DNI</option>
+                              <option value="RUT">RUT (Chile)</option>
+                            </select>
+                          </div>
                         </div>
                         
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
                           <div className="space-y-2">
-                            <Label htmlFor={`document-${index}`}>Documento</Label>
-                            <div className="flex gap-2 relative">
-                              <select 
-                                className={`flex h-10 w-[100px] rounded-md border ${validationState[index]?.documentType ? 'border-green-500' : 'border-input'} bg-background px-3 py-2 text-sm ring-offset-background`}
-                                value={formData.travelers[index]?.documentType || ''}
+                            <Label htmlFor={`documentNumber-${index}`}>Número de documento</Label>
+                            <div className="relative">
+                              <Input
+                                id={`documentNumber-${index}`}
+                                value={traveler.documentNumber || ''}
                                 onChange={(e) => {
-                                  const documentType = e.target.value;
+                                  const documentNumber = e.target.value;
                                   const updatedTravelers = [...formData.travelers];
-                                  updatedTravelers[index].documentType = documentType;
+                                  updatedTravelers[index].documentNumber = documentNumber;
                                   setFormData(prev => ({ ...prev, travelers: updatedTravelers }));
                                   
-                                  // Validar si hay un tipo de documento seleccionado
-                                  updateValidation(index, 'documentType', !!documentType);
-                                  
-                                  // Re-validar el número de documento con el nuevo tipo
-                                  if (updatedTravelers[index].documentNumber) {
-                                    const isDocValid = validateDocumentNumber(
-                                      documentType, 
-                                      updatedTravelers[index].documentNumber || ''
-                                    );
-                                    updateValidation(index, 'documentNumber', isDocValid);
-                                  }
+                                  const isValid = validateDocumentNumber(traveler.documentType || '', documentNumber);
+                                  updateValidation(index, 'documentNumber', isValid);
                                 }}
-                              >
-                                <option value="">Tipo</option>
-                                <option value="RUT">RUT</option>
-                                <option value="DNI">DNI</option>
-                                <option value="PASSPORT">Pasaporte</option>
-                              </select>
-                              <div className="relative flex-1">
-                                <Input
-                                  id={`document-number-${index}`}
-                                  placeholder="00000000A"
-                                  className={`flex-1 ${validationState[index]?.documentNumber ? 'pr-10 border-green-500 focus:border-green-500 focus:ring-green-500' : ''}`}
-                                  value={formData.travelers[index]?.documentNumber || ''}
-                                  onChange={(e) => {
-                                    const documentNumber = e.target.value;
-                                    const updatedTravelers = [...formData.travelers];
-                                    updatedTravelers[index].documentNumber = documentNumber;
-                                    setFormData(prev => ({ ...prev, travelers: updatedTravelers }));
-                                    
-                                    // Validar el número de documento según el tipo
-                                    const isValid = validateDocumentNumber(
-                                      updatedTravelers[index].documentType || '', 
-                                      documentNumber
-                                    );
-                                    updateValidation(index, 'documentNumber', isValid);
-                                  }}
-                                />
-                                {validationState[index]?.documentNumber && (
-                                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-green-500">
-                                    <Check size={18} />
-                                  </div>
-                                )}
-                              </div>
+                                placeholder={traveler.documentType === 'RUT' ? '12345678-9' : 'Ingrese su número de documento'}
+                              />
+                              {validationState[index]?.documentNumber && (
+                                <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-green-500">
+                                  <Check size={18} />
+                                </div>
+                              )}
                             </div>
+                            {traveler.documentType === 'RUT' && (
+                              <p className="text-xs text-muted-foreground">Formato: 12345678-9 (sin puntos)</p>
+                            )}
                           </div>
+                          
                           <div className="space-y-2">
-                            <Label htmlFor={`age-${index}`}>Edad</Label>
-                            <Input
-                              id={`age-${index}`}
-                              value={traveler.age.toString()}
-                              className={cn(traveler.ageCalculated ? "bg-green-50 text-green-900 border-green-500" : "")}
-                              readOnly
-                            />
-                          </div>
-                        </div>
-                        
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                          <div className="space-y-2 col-span-2">
-                            <Label htmlFor={`birth-day-${index}`}>Fecha de nacimiento</Label>
-                            <div className="flex gap-2 relative">
-                              <Input
-                                id={`birth-day-${index}`}
-                                placeholder="DD"
-                                className={`w-[80px] ${validationState[index]?.birthDate ? 'border-green-500 focus:border-green-500 focus:ring-green-500' : ''}`}
-                                value={formData.travelers[index]?.birthDate?.day || ''}
+                            <Label>Fecha de nacimiento</Label>
+                            <div className="grid grid-cols-3 gap-2">
+                              <Input 
+                                placeholder="DD" 
+                                maxLength={2}
+                                value={traveler.birthDate?.day || ''}
                                 onChange={(e) => {
-                                  const day = e.target.value;
-                                  // Validar que solo sean números y máximo 2 dígitos
-                                  if (/^\d{0,2}$/.test(day)) {
+                                  const day = e.target.value.replace(/\D/g, '');
+                                  if (day.length <= 2) {
                                     const updatedTravelers = [...formData.travelers];
-                                    if (!updatedTravelers[index].birthDate) {
-                                      updatedTravelers[index].birthDate = { day, month: '', year: '' };
-                                    } else {
-                                      updatedTravelers[index].birthDate.day = day;
-                                    }
+                                    updatedTravelers[index] = {
+                                      ...updatedTravelers[index],
+                                      birthDate: {
+                                        ...updatedTravelers[index].birthDate || { day: '', month: '', year: '' },
+                                        day
+                                      }
+                                    };
                                     setFormData(prev => ({ ...prev, travelers: updatedTravelers }));
                                     
-                                    // Validar la fecha de nacimiento completa
-                                    const isValid = validateBirthDate(updatedTravelers[index].birthDate);
-                                    updateValidation(index, 'birthDate', isValid);
-                                    
-                                    // Calcular edad si todos los campos están completos
-                                    if (day && updatedTravelers[index].birthDate?.month && updatedTravelers[index].birthDate?.year) {
-                                      calculateAge(index, updatedTravelers[index].birthDate);
+                                    // Si todos los campos están completos, calcular la edad
+                                    if (day.length === 2 && 
+                                        updatedTravelers[index].birthDate?.month?.length === 2 && 
+                                        updatedTravelers[index].birthDate?.year?.length === 4) {
+                                      calculateAge(index, updatedTravelers[index].birthDate!);
+                                      
+                                      const isValid = validateBirthDate(updatedTravelers[index].birthDate);
+                                      updateValidation(index, 'birthDate', isValid);
                                     }
                                   }
                                 }}
                               />
-                              <select 
-                                className={`flex h-10 w-[80px] rounded-md border ${validationState[index]?.birthDate ? 'border-green-500' : 'border-input'} bg-background px-3 py-2 text-sm ring-offset-background`}
-                                value={formData.travelers[index]?.birthDate?.month || ''}
+                              <Input 
+                                placeholder="MM" 
+                                maxLength={2}
+                                value={traveler.birthDate?.month || ''}
                                 onChange={(e) => {
-                                  const month = e.target.value;
-                                  const updatedTravelers = [...formData.travelers];
-                                  if (!updatedTravelers[index].birthDate) {
-                                    updatedTravelers[index].birthDate = { day: '', month, year: '' };
-                                  } else {
-                                    updatedTravelers[index].birthDate.month = month;
-                                  }
-                                  setFormData(prev => ({ ...prev, travelers: updatedTravelers }));
-                                  
-                                  // Validar la fecha de nacimiento completa
-                                  const isValid = validateBirthDate(updatedTravelers[index].birthDate);
-                                  updateValidation(index, 'birthDate', isValid);
-                                  
-                                  // Calcular edad si todos los campos están completos
-                                  if (updatedTravelers[index].birthDate?.day && month && updatedTravelers[index].birthDate?.year) {
-                                    calculateAge(index, updatedTravelers[index].birthDate);
-                                  }
-                                }}
-                              >
-                                <option value="">Mes</option>
-                                <option value="01">01</option>
-                                <option value="02">02</option>
-                                <option value="03">03</option>
-                                <option value="04">04</option>
-                                <option value="05">05</option>
-                                <option value="06">06</option>
-                                <option value="07">07</option>
-                                <option value="08">08</option>
-                                <option value="09">09</option>
-                                <option value="10">10</option>
-                                <option value="11">11</option>
-                                <option value="12">12</option>
-                              </select>
-                              <div className="relative flex-1">
-                                <Input
-                                  id={`birth-year-${index}`}
-                                  placeholder="AAAA"
-                                  className={`flex-1 ${validationState[index]?.birthDate ? 'pr-10 border-green-500 focus:border-green-500 focus:ring-green-500' : ''}`}
-                                  value={formData.travelers[index]?.birthDate?.year || ''}
-                                  onChange={(e) => {
-                                    const year = e.target.value;
-                                    // Validar que solo sean números y máximo 4 dígitos
-                                    if (/^\d{0,4}$/.test(year)) {
-                                      const updatedTravelers = [...formData.travelers];
-                                      if (!updatedTravelers[index].birthDate) {
-                                        updatedTravelers[index].birthDate = { day: '', month: '', year };
-                                      } else {
-                                        updatedTravelers[index].birthDate.year = year;
+                                  const month = e.target.value.replace(/\D/g, '');
+                                  if (month.length <= 2) {
+                                    const updatedTravelers = [...formData.travelers];
+                                    updatedTravelers[index] = {
+                                      ...updatedTravelers[index],
+                                      birthDate: {
+                                        ...updatedTravelers[index].birthDate || { day: '', month: '', year: '' },
+                                        month
                                       }
-                                      setFormData(prev => ({ ...prev, travelers: updatedTravelers }));
+                                    };
+                                    setFormData(prev => ({ ...prev, travelers: updatedTravelers }));
+                                    
+                                    // Si todos los campos están completos, calcular la edad
+                                    if (updatedTravelers[index].birthDate?.day?.length === 2 && 
+                                        month.length === 2 && 
+                                        updatedTravelers[index].birthDate?.year?.length === 4) {
+                                      calculateAge(index, updatedTravelers[index].birthDate!);
                                       
-                                      // Validar la fecha de nacimiento completa
                                       const isValid = validateBirthDate(updatedTravelers[index].birthDate);
                                       updateValidation(index, 'birthDate', isValid);
-                                      
-                                      // Calcular edad si todos los campos están completos
-                                      if (updatedTravelers[index].birthDate?.day && updatedTravelers[index].birthDate?.month && year) {
-                                        calculateAge(index, updatedTravelers[index].birthDate);
-                                      }
                                     }
-                                  }}
-                                />
-                                {validationState[index]?.birthDate && (
-                                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-green-500">
-                                    <Check size={18} />
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                          
-                          {/* Campo de edad calculada automáticamente */}
-                          <div className="space-y-2">
-                            <Label htmlFor={`calculated-age-${index}`}>Edad</Label>
-                            <div className={`flex items-center h-10 px-3 rounded-md border border-input ${formData.travelers[index]?.ageCalculated ? 'bg-primary/10' : 'bg-background'} transition-colors duration-500`}>
-                              <span className="text-sm">
-                                {formData.travelers[index]?.age !== undefined ? `${formData.travelers[index].age} años` : '-'}
-                              </span>
+                                  }
+                                }}
+                              />
+                              <Input 
+                                placeholder="AAAA" 
+                                maxLength={4}
+                                value={traveler.birthDate?.year || ''}
+                                onChange={(e) => {
+                                  // No filtrar caracteres para evitar problemas
+                                  const year = e.target.value.replace(/\D/g, '');
+                                  // Asegurarse de que maxLength se respete
+                                  const validYear = year.slice(0, 4);
+                                  
+                                  const updatedTravelers = [...formData.travelers];
+                                  updatedTravelers[index] = {
+                                    ...updatedTravelers[index],
+                                    birthDate: {
+                                      ...updatedTravelers[index].birthDate || { day: '', month: '', year: '' },
+                                      year: validYear
+                                    }
+                                  };
+                                  setFormData(prev => ({ ...prev, travelers: updatedTravelers }));
+                                  
+                                  // Si todos los campos están completos, calcular la edad
+                                  if (updatedTravelers[index].birthDate?.day?.length === 2 && 
+                                      updatedTravelers[index].birthDate?.month?.length === 2 && 
+                                      validYear.length === 4) {
+                                    calculateAge(index, updatedTravelers[index].birthDate!);
+                                    
+                                    const isValid = validateBirthDate(updatedTravelers[index].birthDate);
+                                    updateValidation(index, 'birthDate', isValid);
+                                  }
+                                }}
+                              />
+                              {traveler.ageCalculated && (
+                                <p className="text-sm text-primary animate-pulse">Edad calculada: {traveler.age} años</p>
+                              )}
                             </div>
                           </div>
                           
@@ -967,7 +1090,6 @@ export default function Checkout() {
                     ))}
                   </CardContent>
                 </Card>
-
                 {/* Contact Information Section */}
                 <Card>
                   <CardHeader>
@@ -984,9 +1106,9 @@ export default function Checkout() {
                           <Input
                             id="email"
                             type="email"
-                            value={formData.contactInfo.email}
+                            value={formData.contact_info.email}
                             onChange={(e) => handleContactChange('email', e.target.value)}
-                            placeholder="Tu dirección de email"
+                            placeholder="Tu direcciÃ³n de email"
                           />
                         </div>
                         
@@ -1009,138 +1131,134 @@ export default function Checkout() {
                               </div>
                             )}
                           </div>
-                          {!emailsMatch && confirmEmail && (
-                            <p className="text-xs text-red-500 mt-1">
-                              Los correos electrónicos no coinciden
-                            </p>
-                          )}
                         </div>
                       </div>
                       
                       <div className="space-y-4">
-                        <div>
-                          <Label className="block mb-2">Tipo</Label>
-                          <select 
-                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
-                            defaultValue="Celular"
-                          >
-                            <option value="Celular">Celular</option>
-                          </select>
-                        </div>
-                        
                         <div className="space-y-2">
-                          <Label htmlFor="phone">Teléfono</Label>
-                          <div className="flex gap-2">
-                            <div className="flex h-10 items-center rounded-md border border-input bg-muted px-3 text-sm text-muted-foreground">
-                              +56
-                            </div>
-                            <Input
-                              id="phone"
-                              value={formData.contactInfo.phone.startsWith('+56') 
-                                ? formData.contactInfo.phone.substring(3) 
-                                : formData.contactInfo.phone}
-                              onChange={(e) => {
-                                const phoneValue = e.target.value;
-                                // Validar que solo contenga números
-                                if (/^\d*$/.test(phoneValue)) {
-                                  handleContactChange('phone', `+56${phoneValue}`);
-                                }
-                              }}
-                              placeholder="912345678"
-                              className="flex-1"
-                            />
-                          </div>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            Ingresa tu número de celular sin el prefijo (9 dígitos)
+                          <Label htmlFor="phone">Teléfono celular</Label>
+                          <Input
+                            id="phone"
+                            type="tel"
+                            value={formData.contact_info.phone}
+                            onChange={(e) => handleContactChange('phone', e.target.value)}
+                            placeholder="+56 9 XXXX XXXX"
+                          />
+                          <p className="text-xs text-muted-foreground">
+                            Formato: +56 + 9 dígitos de tu número (sin espacios)
                           </p>
                         </div>
                       </div>
                     </div>
                   </CardContent>
                 </Card>
-
-                <Button type="submit" className="w-full">
-                  Proceder al Pago
-                </Button>
+                
+                <div className="flex justify-end mt-6">
+                  <Button type="submit" className="px-8">
+                    Continuar con el pago
+                  </Button>
+                </div>
               </form>
             </CardContent>
           </Card>
         </div>
-
-        {/* Resumen de la compra */}
-        <div className="lg:col-span-1">
-          <Card>
+        
+        {/* Resumen del plan seleccionado */}
+        <div>
+          <Card className="sticky top-4">
             <CardHeader>
-              <CardTitle>Resumen de la Compra</CardTitle>
+              <CardTitle>Resumen de tu plan</CardTitle>
+              <CardDescription>Detalles de la asistencia seleccionada</CardDescription>
             </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div>
-                  <h4 className="font-medium">{selectedPlan.name}</h4>
-                  <p className="text-sm text-muted-foreground">
-                    ${totalPrice.toFixed(2)} {selectedPlan.priceDetail}
-                  </p>
-                </div>
-                <div className="space-y-2">
-                  <h4 className="text-sm font-medium">Incluye:</h4>
-                  <ul className="space-y-2">
-                    {selectedPlan.features.map((feature) => (
-                      <li key={feature} className="flex items-center">
-                        <Check className="h-4 w-4 text-primary shrink-0 mr-2" />
-                        {feature}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
+            <CardContent className="space-y-4">
+              <div className="text-center p-4 bg-primary/5 rounded-lg">
+                <h3 className="text-lg font-bold">{selectedPlan.name}</h3>
+                <p className="text-3xl font-bold mt-2">
+                  {quote ? (quote.total ? `$${quote.total.toLocaleString('es-CL')}` : 'Calculando...') : `$${selectedPlan.price.toLocaleString('es-CL')}`}
+                </p>
+                <p className="text-sm text-muted-foreground">{selectedPlan.priceDetail}</p>
+              </div>
+              
+              <div className="space-y-2">
+                <h4 className="font-medium text-sm">Incluye:</h4>
+                <ul className="space-y-1">
+                  {selectedPlan.features.map((feature, index) => (
+                    <li key={index} className="flex items-start text-sm">
+                      <Check className="h-4 w-4 mr-2 mt-0.5 text-green-500" />
+                      <span>{feature}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              
+              <div className="border-t pt-4">
+                <h4 className="font-medium text-sm mb-2">Cobertura:</h4>
+                <ul className="space-y-2 text-sm">
+                  <li className="flex justify-between">
+                    <span>Gastos médicos:</span>
+                    <span className="font-medium">${selectedPlan.coverageDetails.medicalCoverage.toLocaleString('es-CL')}</span>
+                  </li>
+                  <li className="flex justify-between">
+                    <span>Equipaje:</span>
+                    <span className="font-medium">${selectedPlan.coverageDetails.luggageCoverage.toLocaleString('es-CL')}</span>
+                  </li>
+                  <li className="flex justify-between">
+                    <span>Cancelación:</span>
+                    <span className="font-medium">${selectedPlan.coverageDetails.cancellationCoverage.toLocaleString('es-CL')}</span>
+                  </li>
+                  <li className="flex justify-between">
+                    <span>COVID-19:</span>
+                    <span className="font-medium">{selectedPlan.coverageDetails.covidCoverage ? 'Incluido' : 'No incluido'}</span>
+                  </li>
+                  <li className="flex justify-between">
+                    <span>Condiciones preexistentes:</span>
+                    <span className="font-medium">{selectedPlan.coverageDetails.preExistingConditions ? 'Incluido' : 'No incluido'}</span>
+                  </li>
+                  <li className="flex justify-between">
+                    <span>Deportes de aventura:</span>
+                    <span className="font-medium">{selectedPlan.coverageDetails.adventureSports ? 'Incluido' : 'No incluido'}</span>
+                  </li>
+                </ul>
+              </div>
+              
+              {quote && (
                 <div className="border-t pt-4">
-                  <h4 className="text-sm font-medium mb-2">Detalles de Cobertura:</h4>
+                  <h4 className="font-medium text-sm mb-2">Detalle de precio:</h4>
                   <ul className="space-y-2 text-sm">
                     <li className="flex justify-between">
-                      <span>Cobertura Médica:</span>
-                      <span>USD {selectedPlan.coverageDetails.medicalCoverage.toLocaleString()}</span>
+                      <span>Subtotal:</span>
+                      <span className="font-medium">
+                        {isValidNumber(quote.subtotal) ? `$${quote.subtotal.toLocaleString('es-CL')}` : 'Calculando...'}
+                      </span>
                     </li>
                     <li className="flex justify-between">
-                      <span>Cobertura de Equipaje:</span>
-                      <span>USD {selectedPlan.coverageDetails.luggageCoverage.toLocaleString()}</span>
+                      <span>Impuestos:</span>
+                      <span className="font-medium">
+                        {isValidNumber(quote.tax) ? `$${quote.tax.toLocaleString('es-CL')}` : 'Calculando...'}
+                      </span>
                     </li>
-                    <li className="flex justify-between">
-                      <span>Cancelación de Viaje:</span>
-                      <span>USD {selectedPlan.coverageDetails.cancellationCoverage.toLocaleString()}</span>
+                    {isValidNumber(quote.commission) && quote.commission > 0 && (
+                      <li className="flex justify-between">
+                        <span>Descuento:</span>
+                        <span className="font-medium text-green-600">-${quote.commission.toLocaleString('es-CL')}</span>
+                      </li>
+                    )}
+                    <li className="flex justify-between pt-2 border-t font-bold">
+                      <span>Total:</span>
+                      <span>
+                        {isValidNumber(quote.total) ? `$${quote.total.toLocaleString('es-CL')}` : 'Calculando...'}
+                      </span>
                     </li>
-                    {selectedPlan.coverageDetails.covidCoverage && (
-                      <li className="flex items-center">
-                        <Check className="h-4 w-4 text-primary shrink-0 mr-2" />
-                        Cobertura COVID-19
-                      </li>
-                    )}
-                    {selectedPlan.coverageDetails.preExistingConditions && (
-                      <li className="flex items-center">
-                        <Check className="h-4 w-4 text-primary shrink-0 mr-2" />
-                        Condiciones Preexistentes
-                      </li>
-                    )}
-                    {selectedPlan.coverageDetails.adventureSports && (
-                      <li className="flex items-center">
-                        <Check className="h-4 w-4 text-primary shrink-0 mr-2" />
-                        Deportes de Aventura
-                      </li>
-                    )}
+                    <li className="flex justify-between text-xs text-muted-foreground">
+                      <span>Costo por día:</span>
+                      <span>
+                        {isValidNumber(quote.pricePerDay) ? `$${quote.pricePerDay.toLocaleString('es-CL')}` : 'Calculando...'}
+                      </span>
+                    </li>
                   </ul>
                 </div>
-              </div>
+              )}
             </CardContent>
-            <CardFooter className="flex flex-col">
-              <div className="w-full pt-4 border-t">
-                <div className="flex justify-between mb-2">
-                  <span>Subtotal</span>
-                  <span>${totalPrice.toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between font-medium">
-                  <span>Total</span>
-                  <span>${totalPrice.toFixed(2)}</span>
-                </div>
-              </div>
-            </CardFooter>
           </Card>
         </div>
       </div>

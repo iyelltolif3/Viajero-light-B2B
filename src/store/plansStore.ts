@@ -34,10 +34,15 @@ export const usePlansStore = create<PlansStore>((set, get) => ({
 
       if (plansError) throw plansError;
 
-      // Usamos los datos tal cual vienen de la base de datos
+      // Calculamos el precio correcto (price = basePrice * priceMultiplier) para cada plan
+      const plansWithCalculatedPrice = plansData?.map(plan => ({
+        ...plan,
+        price: parseFloat((plan.basePrice * plan.priceMultiplier).toFixed(2))
+      })) || [];
+      
       set({
-        plans: plansData || [],
-        local_plans: plansData || [],
+        plans: plansWithCalculatedPrice,
+        local_plans: plansWithCalculatedPrice,
         is_loading: false,
         error: null,
         has_unsaved_changes: false,
@@ -72,7 +77,6 @@ export const usePlansStore = create<PlansStore>((set, get) => ({
       // Solo incluimos propiedades que existen en la tabla
       if ('name' in updates) updatesToSend.name = updates.name;
       if ('description' in updates) updatesToSend.description = updates.description;
-      if ('price' in updates) updatesToSend.price = updates.price;
       if ('basePrice' in updates) updatesToSend.basePrice = updates.basePrice;
       if ('priceMultiplier' in updates) updatesToSend.priceMultiplier = updates.priceMultiplier;
       if ('priceDetail' in updates) updatesToSend.priceDetail = updates.priceDetail;
@@ -80,6 +84,18 @@ export const usePlansStore = create<PlansStore>((set, get) => ({
       if ('badge' in updates) updatesToSend.badge = updates.badge;
       if ('maxDays' in updates) updatesToSend.maxDays = updates.maxDays;
       if ('coverageDetails' in updates) updatesToSend.coverageDetails = updates.coverageDetails;
+      
+      // Si hay actualizaciones en basePrice o priceMultiplier, calculamos el precio correcto
+      if ('basePrice' in updates || 'priceMultiplier' in updates) {
+        // Buscamos el plan actual para obtener los valores existentes
+        const currentPlan = get().plans.find(p => p.id === planId);
+        if (currentPlan) {
+          const basePrice = 'basePrice' in updates ? updates.basePrice : currentPlan.basePrice;
+          const multiplier = 'priceMultiplier' in updates ? updates.priceMultiplier : currentPlan.priceMultiplier;
+          // Calculamos y actualizamos el precio
+          updatesToSend.price = parseFloat((basePrice * multiplier).toFixed(2));
+        }
+      }
       
       // Si hay una fecha de actualización, la convertimos al formato correcto
       if ('updatedAt' in updates) {
@@ -157,11 +173,15 @@ export const usePlansStore = create<PlansStore>((set, get) => ({
       // Adaptamos el formato para coincidir con la base de datos
       // Las propiedades createdAt, updatedAt deben ser created_at, updated_at
       // Filtramos solo las propiedades que existen en la tabla de la base de datos
+      
+      // Calculamos el precio correcto (price = basePrice * priceMultiplier)
+      const calculatedPrice = parseFloat((plan.basePrice * plan.priceMultiplier).toFixed(2));
+      
       const planToInsert = {
         id: plan.id,
         name: plan.name,
         description: plan.description,
-        price: plan.price,
+        price: calculatedPrice, // Usamos el precio calculado
         basePrice: plan.basePrice,
         priceMultiplier: plan.priceMultiplier,
         priceDetail: plan.priceDetail,
