@@ -8,12 +8,13 @@ import { Input } from '@/components/ui/input';
 import { Traveler } from '@/types';
 
 interface TravelerSelectorProps {
+  travelers?: Traveler[];
   onTravelersChange: (travelers: Traveler[]) => void;
   className?: string;
 }
 
-export default function TravelerSelector({ onTravelersChange, className }: TravelerSelectorProps) {
-  const [travelers, setTravelers] = useState<Traveler[]>([{ age: 18 }]);
+export default function TravelerSelector({ travelers: initialTravelers = [{ age: 18 }], onTravelersChange, className }: TravelerSelectorProps) {
+  const [travelers, setTravelers] = useState<Traveler[]>(initialTravelers);
 
   const handleAddTraveler = () => {
     const newTravelers = [...travelers, { age: 18 }];

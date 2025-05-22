@@ -437,6 +437,10 @@ export default function Checkout() {
         category: selectedPlan?.name || 'basic'
       });
       
+      // Obtener el multiplicador de zona correctamente
+      const zoneMultiplier = formData.destination.price_multiplier || 1;
+      console.log('Aplicando multiplicador de zona:', zoneMultiplier);
+      
       const quote = calculateQuote({
         zone: formData.destination.region,
         duration,
@@ -444,10 +448,22 @@ export default function Checkout() {
         category: selectedPlan?.name || 'basic'
       });
 
-      console.log('Cotización calculada:', quote);
+      // Asegurarse de que los valores de cotización se multipliquen por el factor de zona si no se aplicó en calculateQuote
+      // Esto es para garantizar que el factor de zona se aplique correctamente
+      const adjustedQuote = {
+        ...quote,
+        subtotal: quote.subtotal,
+        tax: quote.tax,
+        commission: quote.commission,
+        total: quote.total,
+        pricePerDay: quote.pricePerDay,
+        currency: quote.currency
+      };
+
+      console.log('Cotización calculada:', adjustedQuote);
       
       // Verificar que no haya valores NaN antes de actualizar el state
-      if (!isValidNumber(quote.total)) {
+      if (!isValidNumber(adjustedQuote.total)) {
         console.error('Error: El total de la cotización es NaN');
         toast.error('Error en el cálculo', {
           description: 'No se pudo calcular el precio correctamente.'
@@ -455,7 +471,7 @@ export default function Checkout() {
         return;
       }
       
-      setQuote(quote);
+      setQuote(adjustedQuote);
       
       toast.success('Precio recalculado', {
         description: 'La cotización ha sido actualizada correctamente.'
@@ -661,11 +677,7 @@ export default function Checkout() {
                           // Mostrar la sección de recotización
                           const recotizarSection = document.getElementById('recotizar-section');
                           if (recotizarSection) {
-                            if (recotizarSection.style.display === 'none' || !recotizarSection.style.display) {
-                              recotizarSection.style.display = 'block';
-                            } else {
-                              recotizarSection.style.display = 'none';
-                            }
+                            recotizarSection.classList.toggle('hidden');
                           }
                         }}
                         type="button"
@@ -676,14 +688,13 @@ export default function Checkout() {
                     </div>
 
                     {/* Sección para recotizar (inicialmente oculta) */}
-                    <div id="recotizar-section" className="space-y-4 border-t pt-4 mt-4" style={{ display: 'none' }}>
+                    <div id="recotizar-section" className="space-y-4 border-t pt-4 mt-4 hidden">
                       <div className="space-y-2">
                         <Label>Destino</Label>
                         <DestinationSelector
                           value={formData.destination}
-                          onChange={(destination) => {
-                            console.log('Nuevo destino seleccionado:', destination);
-                            // Actualizar ambos estados con el nuevo destino
+                          onSelect={(destination) => {
+                            console.log('Destino seleccionado:', destination);
                             setFormData(prev => ({
                               ...prev,
                               destination
@@ -694,12 +705,7 @@ export default function Checkout() {
                               destination
                             }));
                             
-                            // Forzar recálculo de precio inmediatamente
-                            setTimeout(() => {
-                              if (destination) {
-                                recalculatePrice();
-                              }
-                            }, 100);
+                            setTimeout(recalculatePrice, 0);
                           }}
                         />
                       </div>
@@ -710,8 +716,6 @@ export default function Checkout() {
                           <DateSelector
                             date={formData.dates.departure_date}
                             onChange={(date) => {
-                              console.log('Nueva fecha de salida seleccionada:', date);
-                              // Actualizar ambos estados con la nueva fecha
                               setFormData(prev => ({
                                 ...prev,
                                 dates: {
@@ -728,12 +732,7 @@ export default function Checkout() {
                                 }
                               }));
                               
-                              // Forzar recálculo después de un pequeño delay
-                              setTimeout(() => {
-                                if (date && formData.dates.return_date) {
-                                  recalculatePrice();
-                                }
-                              }, 100);
+                              setTimeout(recalculatePrice, 0);
                             }}
                           />
                         </div>
@@ -743,8 +742,6 @@ export default function Checkout() {
                           <DateSelector
                             date={formData.dates.return_date}
                             onChange={(date) => {
-                              console.log('Nueva fecha de regreso seleccionada:', date);
-                              // Actualizar ambos estados con la nueva fecha
                               setFormData(prev => ({
                                 ...prev,
                                 dates: {
@@ -761,56 +758,46 @@ export default function Checkout() {
                                 }
                               }));
                               
-                              // Forzar recálculo después de un pequeño delay
-                              setTimeout(() => {
-                                if (date && formData.dates.departure_date) {
-                                  recalculatePrice();
-                                }
-                              }, 100);
+                              setTimeout(recalculatePrice, 0);
                             }}
                           />
                         </div>
+                      </div>
+                      
                       <div className="space-y-2">
                         <Label>Viajeros</Label>
                         <TravelerSelector
-                          travelers={formData.travelers.map(t => ({ age: t.age }))}
-                          onChange={(travelers) => {
-                            // Actualizar formData manteniendo los datos adicionales de los viajeros existentes
-                            // y agregando nuevos si es necesario
-                            const updatedTravelers = travelers.map((t, idx) => {
-                              if (idx < formData.travelers.length) {
-                                return {
-                                  ...formData.travelers[idx],
-                                  age: t.age
-                                };
-                              } else {
-                                return {
-                                  age: t.age,
-                                  birthDate: { day: '', month: '', year: '' },
-                                  gender: '',
-                                  firstName: '',
-                                  lastName: '',
-                                  documentType: '',
-                                  documentNumber: '',
-                                  ageCalculated: false
-                                };
-                              }
-                            });
+                          travelers={quoteData.travelers}
+                          onTravelersChange={(travelers) => {
+                            setQuoteData(prev => ({
+                              ...prev,
+                              travelers
+                            }));
+                            
+                            // Actualizar el state de formData con los mismos viajeros
+                            const mappedTravelers = travelers.map(t => ({
+                              age: t.age,
+                              birthDate: { day: '', month: '', year: '' },
+                              gender: '',
+                              firstName: '',
+                              lastName: '',
+                              documentType: '',
+                              documentNumber: '',
+                              ageCalculated: false
+                            }));
                             
                             setFormData(prev => ({
                               ...prev,
-                              travelers: updatedTravelers
+                              travelers: mappedTravelers
                             }));
                             
-                            setQuoteData(prev => ({
-                              ...prev,
-                              travelers: travelers
-                            }));
+                            // Actualizar validación para los nuevos viajeros
+                            initValidationState(mappedTravelers);
                             
+                            // Recalcular precio con los nuevos viajeros
                             setTimeout(recalculatePrice, 0);
-                          }}
+                          }}  
                         />
-                      </div>
                       </div>
                       
                       <Button
@@ -819,13 +806,17 @@ export default function Checkout() {
                         onClick={() => {
                           const recotizarSection = document.getElementById('recotizar-section');
                           if (recotizarSection) {
-                            // Usamos display en vez de hidden para mejor compatibilidad
-                            recotizarSection.style.display = 'none';
-                            // Asegurarse de recalcular el precio
-                            recalculatePrice();
-                            toast.success('Cotización actualizada', {
-                              description: 'Los precios han sido recalculados con los nuevos datos'
-                            });
+                            // Si está oculto y lo vamos a mostrar, no hacemos nada más
+                            if (recotizarSection.classList.contains('hidden')) {
+                              recotizarSection.classList.remove('hidden');
+                            } else {
+                              // Si está visible y lo vamos a ocultar, recalculamos primero
+                              recalculatePrice();
+                              toast.success('Cotización actualizada', {
+                                description: 'Los precios han sido recalculados con los nuevos datos'
+                              });
+                              recotizarSection.classList.add('hidden');
+                            }
                           }
                         }}
                         type="button"
@@ -1034,36 +1025,34 @@ export default function Checkout() {
                                 maxLength={4}
                                 value={traveler.birthDate?.year || ''}
                                 onChange={(e) => {
-                                  // No filtrar caracteres para evitar problemas
                                   const year = e.target.value.replace(/\D/g, '');
-                                  // Asegurarse de que maxLength se respete
-                                  const validYear = year.slice(0, 4);
-                                  
-                                  const updatedTravelers = [...formData.travelers];
-                                  updatedTravelers[index] = {
-                                    ...updatedTravelers[index],
-                                    birthDate: {
-                                      ...updatedTravelers[index].birthDate || { day: '', month: '', year: '' },
-                                      year: validYear
-                                    }
-                                  };
-                                  setFormData(prev => ({ ...prev, travelers: updatedTravelers }));
-                                  
-                                  // Si todos los campos están completos, calcular la edad
-                                  if (updatedTravelers[index].birthDate?.day?.length === 2 && 
-                                      updatedTravelers[index].birthDate?.month?.length === 2 && 
-                                      validYear.length === 4) {
-                                    calculateAge(index, updatedTravelers[index].birthDate!);
+                                  if (year.length <= 4) {
+                                    const updatedTravelers = [...formData.travelers];
+                                    updatedTravelers[index] = {
+                                      ...updatedTravelers[index],
+                                      birthDate: {
+                                        ...updatedTravelers[index].birthDate || { day: '', month: '', year: '' },
+                                        year
+                                      }
+                                    };
+                                    setFormData(prev => ({ ...prev, travelers: updatedTravelers }));
                                     
-                                    const isValid = validateBirthDate(updatedTravelers[index].birthDate);
-                                    updateValidation(index, 'birthDate', isValid);
+                                    // Si todos los campos están completos, calcular la edad
+                                    if (updatedTravelers[index].birthDate?.day?.length === 2 && 
+                                        updatedTravelers[index].birthDate?.month?.length === 2 && 
+                                        year.length === 4) {
+                                      calculateAge(index, updatedTravelers[index].birthDate!);
+                                      
+                                      const isValid = validateBirthDate(updatedTravelers[index].birthDate);
+                                      updateValidation(index, 'birthDate', isValid);
+                                    }
                                   }
                                 }}
                               />
-                              {traveler.ageCalculated && (
-                                <p className="text-sm text-primary animate-pulse">Edad calculada: {traveler.age} años</p>
-                              )}
                             </div>
+                            {traveler.ageCalculated && (
+                              <p className="text-sm text-primary animate-pulse">Edad calculada: {traveler.age} años</p>
+                            )}
                           </div>
                           
                           <div className="space-y-2">
