@@ -8,8 +8,8 @@ export interface DiscountItem {
   discountPercentage: number;
   validUntil: string;
   imageSrc?: string;
-  active: boolean;
-  order: number;
+  active?: boolean; // Opcional para compatibilidad con settings.ts
+  order?: number;  // Opcional para compatibilidad con settings.ts
 }
 
 export interface DiscountSection {
@@ -26,7 +26,7 @@ export interface ContentSettings extends BaseModel {
     title: string;
     subtitle: string;
     ctaText: string;
-    backgroundImage: string;
+    imageUrl: string;       // Requerido en settings.ts
   };
   featuresSection?: {
     title: string;

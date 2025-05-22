@@ -8,16 +8,19 @@ import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 
 interface DateSelectorProps {
   className?: string;
+  date?: Date | null;
+  onChange?: (date: Date | null) => void;
   onDatesChange?: (dates: { departure_date: Date | undefined; return_date: Date | undefined }) => void;
 }
 
-const DateSelector = ({ className, onDatesChange }: DateSelectorProps) => {
+const DateSelector = ({ className, date, onChange, onDatesChange }: DateSelectorProps) => {
   const [open, setOpen] = useState(false);
+  // Mantener compatibilidad con ambos modos (solo fecha o fechas de ida y vuelta)
   const [dates, setDates] = useState<{
     departure_date: Date | undefined;
     return_date: Date | undefined;
   }>({
-    departure_date: undefined,
+    departure_date: date || undefined,
     return_date: undefined,
   });
   const [previewDays, setPreviewDays] = useState<number | null>(null);

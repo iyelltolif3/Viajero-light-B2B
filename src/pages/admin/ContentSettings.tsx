@@ -1,5 +1,4 @@
 import React, { useEffect } from 'react';
-import { useSettingsStore } from '@/store/settingsStore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -7,12 +6,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
-import { GripVertical, Trash2, Save } from 'lucide-react';
+import { GripVertical, Trash2, Save, Plus, ImageIcon } from 'lucide-react';
 import type { DiscountItem } from '@/types/content';
 import { useToast } from '@/components/ui/use-toast';
+import { DiscountImageUploader } from '@/components/admin/DiscountImageUploader';
+import { Separator } from '@/components/ui/separator';
+import { useContentStore } from '@/store/contentStore';
 
 export default function ContentSettings() {
-  const { content, updateContent, initializeContent, saveContent } = useSettingsStore();
+  const { content, updateContent, initializeContent, saveContent } = useContentStore();
   const { toast } = useToast();
   const { discountSection } = content;
 
@@ -88,9 +90,10 @@ export default function ContentSettings() {
       id: Date.now().toString(),
       title: "Nueva Oferta",
       description: "Descripción de la nueva oferta",
-      discount: "10%",
-      expiryDate: "Por definir",
-      imageSrc: "https://images.unsplash.com/photo-1465146344425-f00d5f5c8f07?auto=format&fit=crop&q=80",
+      code: "DESC10",
+      discountPercentage: 10,
+      validUntil: "Por definir",
+      imageSrc: "", // Ya no usamos URL por defecto, se cargará una imagen
       active: true,
       order: discountSection.discounts.length + 1,
     };
@@ -253,48 +256,63 @@ export default function ContentSettings() {
                                     }
                                     placeholder="Descripción de la oferta"
                                   />
-                                  <div className="grid grid-cols-2 gap-4">
+                                  <div className="grid grid-cols-3 gap-4">
                                     <div>
-                                      <Label>Descuento</Label>
+                                      <Label>Descuento (%)</Label>
                                       <Input
-                                        value={discount.discount}
+                                        type="number"
+                                        value={discount.discountPercentage}
                                         onChange={(e) =>
                                           handleDiscountChange(
                                             discount.id,
-                                            'discount',
-                                            e.target.value
+                                            'discountPercentage',
+                                            // Convertir a string para cumplir con la interfaz
+                                            String(parseFloat(e.target.value))
                                           )
                                         }
-                                        placeholder="ej: 25%"
+                                        placeholder="ej: 25"
                                       />
                                     </div>
                                     <div>
                                       <Label>Fecha de Expiración</Label>
                                       <Input
-                                        value={discount.expiryDate}
+                                        value={discount.validUntil}
                                         onChange={(e) =>
                                           handleDiscountChange(
                                             discount.id,
-                                            'expiryDate',
+                                            'validUntil',
                                             e.target.value
                                           )
                                         }
                                         placeholder="ej: 31 de Diciembre, 2023"
                                       />
                                     </div>
+                                    <div>
+                                      <Label>Código de Descuento</Label>
+                                      <Input
+                                        value={discount.code}
+                                        onChange={(e) =>
+                                          handleDiscountChange(
+                                            discount.id,
+                                            'code',
+                                            e.target.value
+                                          )
+                                        }
+                                        placeholder="ej: VERANO2025"
+                                      />
+                                    </div>
                                   </div>
-                                  <div>
-                                    <Label>URL de la Imagen</Label>
-                                    <Input
+                                  <div className="py-2">
+                                    <Separator className="my-4" />
+                                    <DiscountImageUploader
                                       value={discount.imageSrc}
-                                      onChange={(e) =>
+                                      onChange={(base64String) =>
                                         handleDiscountChange(
                                           discount.id,
                                           'imageSrc',
-                                          e.target.value
+                                          base64String
                                         )
                                       }
-                                      placeholder="URL de la imagen"
                                     />
                                   </div>
                                 </div>

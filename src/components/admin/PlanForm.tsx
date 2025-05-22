@@ -30,7 +30,24 @@ export function PlanForm({ plan, isSelected, onSelect, onChange, onSave }: PlanF
 
   // Función para aplicar cambios y marcar como modificado
   const handleChange = (updates: Partial<Plan>) => {
+    // Crear una copia del plan con las actualizaciones
     const updatedPlan = { ...localPlan, ...updates };
+    
+    // Si se actualiza basePrice o priceMultiplier, recalcular el precio
+    if ('basePrice' in updates || 'priceMultiplier' in updates) {
+      // Calcular el nuevo precio como basePrice * priceMultiplier
+      const calculatedPrice = updatedPlan.basePrice * updatedPlan.priceMultiplier;
+      
+      // Redondear a dos decimales para evitar problemas de precisión
+      const roundedPrice = Math.round(calculatedPrice * 100) / 100;
+      
+      // Actualizar el price en las actualizaciones
+      updates.price = roundedPrice;
+      
+      // Actualizar también el plan local
+      updatedPlan.price = roundedPrice;
+    }
+    
     setLocalPlan(updatedPlan);
     setHasUnsavedChanges(true);
     onChange(updates);
@@ -106,6 +123,18 @@ export function PlanForm({ plan, isSelected, onSelect, onChange, onSave }: PlanF
                   onChange={(e) => handleChange({ badge: e.target.value })}
                   placeholder="Ej: Más Popular"
                 />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="price">Precio Calculado (basePrice × priceMultiplier)</Label>
+                <Input
+                  id="price"
+                  type="number"
+                  value={localPlan.basePrice * localPlan.priceMultiplier}
+                  disabled
+                  className="bg-muted"
+                />
+                <p className="text-xs text-muted-foreground">Este precio es calculado automáticamente. Se multiplicará por los factores de zona y edad al momento de cotización.</p>
               </div>
 
               <div className="space-y-2">
